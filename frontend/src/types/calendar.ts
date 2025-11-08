@@ -8,6 +8,31 @@
 export type DateString = string
 
 /**
+ * ジョブID (1-4)
+ */
+export type JobId = 1 | 2 | 3 | 4
+
+/**
+ * ジョブの色（蛍光色）
+ */
+export type JobColor = '#33FF33' | '#FF10F0' | '#BF40BF' | '#00FFFF'
+
+/**
+ * ジョブ（勤務先）情報
+ */
+export interface Job {
+  id: JobId
+  name: string
+  color: JobColor
+  isActive: boolean
+}
+
+/**
+ * 日付とジョブのマッピング
+ */
+export type DateJobMap = Record<DateString, JobId[]>
+
+/**
  * 曜日 (0: 日曜 ~ 6: 土曜)
  */
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6
@@ -69,4 +94,10 @@ export interface CalendarState {
   holidays: HolidayData
   savedTemplate: CalendarTemplate | null
   previousMonthData: DateString[] | null
+  /** 日付とジョブのマッピング */
+  dateJobMap: DateJobMap
+  /** ジョブ一覧（最大4つ） */
+  jobs: Job[]
+  /** 現在選択中のジョブID（null = 掛け持ちなし） */
+  currentJobId: JobId | null
 }
