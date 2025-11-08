@@ -18,7 +18,11 @@
         >
           <button
             class="job-button"
-            :style="{ borderColor: job.color, color: currentJobId === job.id ? job.color : '#666' }"
+            :style="{
+              borderColor: currentJobId === job.id ? job.color : '#ddd',
+              borderWidth: currentJobId === job.id ? '3px' : '2px',
+              color: currentJobId === job.id ? job.color : '#666'
+            }"
             @click="selectJob(job.id)"
           >
             <span class="job-color-dot" :style="{ backgroundColor: job.color }"></span>

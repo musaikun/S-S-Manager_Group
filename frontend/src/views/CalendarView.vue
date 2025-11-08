@@ -5,6 +5,11 @@
 
     <!-- カレンダーカード -->
       <div class="calendar-card">
+        <!-- 選択中ジョブバナー -->
+        <div v-if="store.currentJobId !== null" class="current-job-banner" :style="{ backgroundColor: getCurrentJobColor() }">
+          <span class="banner-text">{{ getCurrentJobName() }}で選択しています</span>
+        </div>
+
         <!-- ヘッダー：年月 -->
         <div class="calendar-header">
           <h1 class="current-month">{{ currentMonthInfo.displayText }}</h1>
@@ -251,6 +256,20 @@ const getJobColor = (jobId: number) => {
   return job?.color || '#999'
 }
 
+// 現在選択中のジョブ名を取得
+const getCurrentJobName = () => {
+  if (store.currentJobId === null) return ''
+  const job = store.getJobById(store.currentJobId)
+  return job?.name || ''
+}
+
+// 現在選択中のジョブの色を取得
+const getCurrentJobColor = () => {
+  if (store.currentJobId === null) return 'transparent'
+  const job = store.getJobById(store.currentJobId)
+  return job?.color || '#999'
+}
+
 // 休日基準で選択（確認付き）
 const handleSelectAll = () => {
   // 選択を解除する日付を確認
@@ -354,6 +373,42 @@ const handleSelectByWeekday = (dayOfWeek: number) => {
   padding: 1rem;
   margin-bottom: 1rem;
   animation: fadeIn 0.5s ease-in;
+  position: relative;
+}
+
+/* 選択中ジョブバナー */
+.current-job-banner {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 0.75rem 1.5rem;
+  margin: -1rem -1rem 1rem -1rem;
+  border-radius: 16px 16px 0 0;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.banner-text {
+  color: white;
+  font-weight: bold;
+  font-size: 1.1rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.5px;
 }
 
 @keyframes fadeIn {

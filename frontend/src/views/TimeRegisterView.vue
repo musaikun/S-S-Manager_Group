@@ -112,50 +112,62 @@
         <h3>日別に設定</h3>
       </div>
 
-      <!-- 勤務日カードリスト -->
-      <div class="work-days-list">
-        <div
-          v-for="(workDay, index) in activeWorkDays"
-          :key="workDay.date"
-          class="work-day-card"
-          :class="[
-            getCardBackgroundClass(workDay),
-            getBorderClass(workDay),
-            {
-              removed: workDay.isRemoved,
-              highlighted: isHighlighted(workDay)
-            }
-          ]"
-        >
-          <div class="card-main" @click="handleCardClick($event, index)">
-            <div class="card-content-single-line">
-              <div class="card-date-section">
-                <span class="card-date" :class="{
-                  'saturday': workDay.dayOfWeek === 6,
-                  'sunday': workDay.dayOfWeek === 0,
-                  'holiday': isHoliday(workDay.date)
-                }">{{ workDay.displayDate }}</span>
-                <span class="card-week">第{{ workDay.weekNumber }}週</span>
-              </div>
-              <div class="card-time-section">
-                <span class="time-value" :class="getStartTimeClass(workDay)">{{ workDay.startTime }}</span>
-                <span class="time-separator">〜</span>
-                <span class="time-value" :class="getEndTimeClass(workDay)">{{ workDay.endTime }}</span>
-              </div>
-              <div class="card-hours">
-                <span class="hours-icon">💼</span>
-                <span class="hours-text">{{ formatWorkTime(workDay) }}</span>
+      <!-- ジョブごとにグループ分けした勤務日カードリスト -->
+      <div v-for="(group, groupIndex) in workDaysByJob" :key="groupIndex" class="job-group">
+        <!-- ジョブヘッダー -->
+        <div v-if="group.job" class="job-group-header" :style="{ borderLeftColor: group.job.color }">
+          <span class="job-color-indicator" :style="{ backgroundColor: group.job.color }"></span>
+          <span class="job-name">{{ group.job.name }}</span>
+        </div>
+        <div v-else class="job-group-header no-job">
+          <span class="job-name">掛け持ちなし</span>
+        </div>
+
+        <!-- 勤務日カードリスト -->
+        <div class="work-days-list">
+          <div
+            v-for="(workDay, index) in group.workDays"
+            :key="`${workDay.date}_${workDay.jobId || 'none'}`"
+            class="work-day-card"
+            :class="[
+              getCardBackgroundClass(workDay),
+              getBorderClass(workDay),
+              {
+                removed: workDay.isRemoved,
+                highlighted: isHighlighted(workDay)
+              }
+            ]"
+          >
+            <div class="card-main" @click="handleCardClick($event, findWorkDayIndex(workDay))">
+              <div class="card-content-single-line">
+                <div class="card-date-section">
+                  <span class="card-date" :class="{
+                    'saturday': workDay.dayOfWeek === 6,
+                    'sunday': workDay.dayOfWeek === 0,
+                    'holiday': isHoliday(workDay.date)
+                  }">{{ workDay.displayDate }}</span>
+                  <span class="card-week">第{{ workDay.weekNumber }}週</span>
+                </div>
+                <div class="card-time-section">
+                  <span class="time-value" :class="getStartTimeClass(workDay)">{{ workDay.startTime }}</span>
+                  <span class="time-separator">〜</span>
+                  <span class="time-value" :class="getEndTimeClass(workDay)">{{ workDay.endTime }}</span>
+                </div>
+                <div class="card-hours">
+                  <span class="hours-icon">💼</span>
+                  <span class="hours-text">{{ formatWorkTime(workDay) }}</span>
+                </div>
               </div>
             </div>
+            <button
+              @click.stop="toggleRemoveDay(findWorkDayIndex(workDay))"
+              class="card-action-btn"
+              :class="{ restore: workDay.isRemoved }"
+            >
+              <span v-if="!workDay.isRemoved" class="remove-icon">×</span>
+              <span v-else class="restore-icon">↶</span>
+            </button>
           </div>
-          <button
-            @click.stop="toggleRemoveDay(index)"
-            class="card-action-btn"
-            :class="{ restore: workDay.isRemoved }"
-          >
-            <span v-if="!workDay.isRemoved" class="remove-icon">×</span>
-            <span v-else class="restore-icon">↶</span>
-          </button>
         </div>
       </div>
 
@@ -513,6 +525,33 @@ provide('isModalOpen', computed(() => showTimeModal.value || showConfirmModal.va
 const activeWorkDays = computed(() => {
   return workDays.value
 })
+
+// ジョブごとにグループ化されたWorkDays
+const workDaysByJob = computed(() => {
+  const grouped: Record<string, { job: any; workDays: WorkDay[] }> = {}
+
+  workDays.value.forEach((day) => {
+    const jobId = day.jobId
+    const key = jobId?.toString() || 'none'
+
+    if (!grouped[key]) {
+      const job = jobId ? calendarStore.getJobById(jobId) : null
+      grouped[key] = {
+        job,
+        workDays: []
+      }
+    }
+
+    grouped[key].workDays.push(day)
+  })
+
+  return Object.values(grouped)
+})
+
+// workDaysの全体配列の中からインデックスを検索
+const findWorkDayIndex = (workDay: WorkDay): number => {
+  return workDays.value.findIndex((wd) => wd.date === workDay.date && wd.jobId === workDay.jobId)
+}
 
 // 選択条件に該当する勤務日かどうかを判定
 const isHighlighted = (workDay: WorkDay) => {
@@ -1528,6 +1567,40 @@ const confirmTimeEdit = () => {
 .help-btn:hover {
   background: #764ba2;
   transform: scale(1.1);
+}
+
+/* ジョブグループ */
+.job-group {
+  margin-bottom: 1.5rem;
+}
+
+.job-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  border-radius: 8px;
+  border-left: 4px solid;
+  font-weight: bold;
+}
+
+.job-group-header.no-job {
+  border-left-color: #9ca3af;
+  background: linear-gradient(135deg, rgba(156, 163, 175, 0.1), rgba(209, 213, 219, 0.1));
+}
+
+.job-color-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.job-name {
+  font-size: 1.05rem;
+  color: #333;
 }
 
 /* 勤務日カードリスト */
