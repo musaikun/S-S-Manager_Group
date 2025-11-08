@@ -734,6 +734,7 @@ watch(endPm, (isPm) => {
 // 初期化関数
 const initializeWorkDays = () => {
   const selectedDates = calendarStore.selectedDatesArray
+  const dateJobMap = calendarStore.dateJobMap
 
   if (selectedDates.length === 0) {
     // 選択がなくなった場合はクリア
@@ -743,9 +744,9 @@ const initializeWorkDays = () => {
 
   // workDaysが空の場合は初期化、そうでなければ同期
   if (timeRegisterStore.workDays.length === 0) {
-    timeRegisterStore.initializeFromDates(selectedDates)
+    timeRegisterStore.initializeFromDates(selectedDates, dateJobMap)
   } else {
-    timeRegisterStore.syncWithSelectedDates(selectedDates)
+    timeRegisterStore.syncWithSelectedDates(selectedDates, dateJobMap)
   }
 }
 

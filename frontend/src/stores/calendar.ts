@@ -169,30 +169,86 @@ export const useCalendarStore = defineStore('calendar', {
     },
 
     /**
-     * 全ての日付を選択（トグル対応）
+     * 全ての日付を選択（トグル対応、Job対応版）
      */
     selectAll(dates: DateString[]) {
-      // 全ての対象日付が選択済みかチェック
-      const allSelected = dates.every(date => this.selectedDates.has(date))
+      if (this.currentJobId === null) {
+        // 掛け持ちなしモードの場合は従来通り
+        const allSelected = dates.every(date => this.selectedDates.has(date))
 
-      if (allSelected) {
-        // 全て選択済みなら解除
-        dates.forEach(date => this.selectedDates.delete(date))
+        if (allSelected) {
+          // 全て選択済みなら解除
+          dates.forEach(date => this.selectedDates.delete(date))
+        } else {
+          // 選択されていない日付がある場合は全て選択
+          dates.forEach(date => this.selectedDates.add(date))
+        }
       } else {
-        // 選択されていない日付がある場合は全て選択
-        dates.forEach(date => this.selectedDates.add(date))
+        // 掛け持ちモードの場合
+        // 全ての対象日付が現在のジョブで選択済みかチェック
+        const allSelected = dates.every(date => {
+          const jobIds = this.dateJobMap[date] || []
+          return jobIds.includes(this.currentJobId!)
+        })
+
+        if (allSelected) {
+          // 全て選択済みなら現在のジョブを解除
+          dates.forEach(date => {
+            const jobIds = this.dateJobMap[date] || []
+            const index = jobIds.indexOf(this.currentJobId!)
+            if (index > -1) {
+              jobIds.splice(index, 1)
+              if (jobIds.length === 0) {
+                delete this.dateJobMap[date]
+                this.selectedDates.delete(date)
+              } else {
+                this.dateJobMap[date] = jobIds
+              }
+            }
+          })
+        } else {
+          // 選択されていない日付に現在のジョブを追加
+          dates.forEach(date => {
+            const jobIds = this.dateJobMap[date] || []
+            if (!jobIds.includes(this.currentJobId!)) {
+              if (jobIds.length === 0) {
+                this.dateJobMap[date] = [this.currentJobId!]
+                this.selectedDates.add(date)
+              } else {
+                jobIds.push(this.currentJobId!)
+                this.dateJobMap[date] = jobIds
+              }
+            }
+          })
+        }
       }
     },
 
     /**
-     * 全ての選択を解除
+     * 全ての選択を解除（Job対応版）
      */
     clearAll() {
-      this.selectedDates.clear()
+      if (this.currentJobId === null) {
+        // 掛け持ちなしモードの場合は従来通り
+        this.selectedDates.clear()
+      } else {
+        // 掛け持ちモードの場合は現在のジョブのみクリア
+        Object.keys(this.dateJobMap).forEach(dateString => {
+          const jobIds = this.dateJobMap[dateString]
+          const index = jobIds.indexOf(this.currentJobId!)
+          if (index > -1) {
+            jobIds.splice(index, 1)
+            if (jobIds.length === 0) {
+              delete this.dateJobMap[dateString]
+              this.selectedDates.delete(dateString)
+            }
+          }
+        })
+      }
     },
 
     /**
-     * 曜日で選択（トグル対応）
+     * 曜日で選択（トグル対応、Job対応版）
      */
     selectByWeekday(dates: DateString[], targetDayOfWeek: number) {
       // 対象曜日の日付を抽出
@@ -201,15 +257,55 @@ export const useCalendarStore = defineStore('calendar', {
         return date.getDay() === targetDayOfWeek
       })
 
-      // 対象曜日の日付が全て選択済みかチェック
-      const allSelected = targetDates.every(date => this.selectedDates.has(date))
+      if (this.currentJobId === null) {
+        // 掛け持ちなしモードの場合は従来通り
+        const allSelected = targetDates.every(date => this.selectedDates.has(date))
 
-      if (allSelected) {
-        // 全て選択済みなら解除
-        targetDates.forEach(date => this.selectedDates.delete(date))
+        if (allSelected) {
+          // 全て選択済みなら解除
+          targetDates.forEach(date => this.selectedDates.delete(date))
+        } else {
+          // 選択されていない日付がある場合は全て選択
+          targetDates.forEach(date => this.selectedDates.add(date))
+        }
       } else {
-        // 選択されていない日付がある場合は全て選択
-        targetDates.forEach(date => this.selectedDates.add(date))
+        // 掛け持ちモードの場合
+        // 対象曜日の日付が全て現在のジョブで選択済みかチェック
+        const allSelected = targetDates.every(date => {
+          const jobIds = this.dateJobMap[date] || []
+          return jobIds.includes(this.currentJobId!)
+        })
+
+        if (allSelected) {
+          // 全て選択済みなら現在のジョブを解除
+          targetDates.forEach(date => {
+            const jobIds = this.dateJobMap[date] || []
+            const index = jobIds.indexOf(this.currentJobId!)
+            if (index > -1) {
+              jobIds.splice(index, 1)
+              if (jobIds.length === 0) {
+                delete this.dateJobMap[date]
+                this.selectedDates.delete(date)
+              } else {
+                this.dateJobMap[date] = jobIds
+              }
+            }
+          })
+        } else {
+          // 選択されていない日付に現在のジョブを追加
+          targetDates.forEach(date => {
+            const jobIds = this.dateJobMap[date] || []
+            if (!jobIds.includes(this.currentJobId!)) {
+              if (jobIds.length === 0) {
+                this.dateJobMap[date] = [this.currentJobId!]
+                this.selectedDates.add(date)
+              } else {
+                jobIds.push(this.currentJobId!)
+                this.dateJobMap[date] = jobIds
+              }
+            }
+          })
+        }
       }
     },
 
