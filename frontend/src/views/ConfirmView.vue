@@ -1,30 +1,6 @@
 <template>
   <div class="confirm-view">
     <div class="confirm-container">
-      <!-- 選択された日付一覧 -->
-      <div v-if="activeWorkDays.length > 0" class="selected-dates-section">
-        <h3 class="section-title">選択された日付</h3>
-        <div class="dates-list">
-          <span
-            v-for="workDay in sortedWorkDays"
-            :key="`${workDay.date}_${workDay.jobId || 'none'}`"
-            class="date-chip"
-            :class="{
-              'saturday': workDay.dayOfWeek === 6,
-              'sunday': workDay.dayOfWeek === 0,
-              'holiday': isHoliday(workDay.date)
-            }"
-          >
-            {{ workDay.displayDate }}
-            <span v-if="workDay.jobId" class="job-indicator" :style="{ backgroundColor: calendarStore.getJobById(workDay.jobId)?.color }"></span>
-          </span>
-        </div>
-        <div class="dates-summary">
-          合計 <strong>{{ uniqueDatesCount }}</strong> 日
-          <span v-if="hasMultipleJobs">（複数掛け持ちを含む）</span>
-        </div>
-      </div>
-
       <!-- 確認テーブル（ジョブごとにグループ分け） -->
       <div v-for="(group, groupIndex) in workDaysByJob" :key="groupIndex" class="job-group">
         <!-- ジョブヘッダー -->
@@ -88,36 +64,18 @@
           </div>
         </div>
 
-        <!-- 掛け持ち先ごとの統計 -->
-        <div v-if="jobSummaries.length > 1" class="job-statistics">
-          <h3 class="job-stats-title">掛け持ち先別統計</h3>
-          <div class="job-stats-grid">
-            <div v-for="summary in jobSummaries" :key="summary.jobId || 'none'" class="job-stat-card">
-              <div class="job-stat-header">
-                <span
-                  v-if="summary.jobId"
-                  class="job-stat-indicator"
-                  :style="{ backgroundColor: calendarStore.getJobById(summary.jobId)?.color }"
-                ></span>
-                <span class="job-stat-name">
-                  {{ summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : '掛け持ちなし' }}
-                </span>
-              </div>
-              <div class="job-stat-details">
-                <div class="job-stat-row">
-                  <span class="job-stat-label">勤務日数</span>
-                  <span class="job-stat-value">{{ summary.workDays }}日</span>
-                </div>
-                <div class="job-stat-row">
-                  <span class="job-stat-label">総勤務時間</span>
-                  <span class="job-stat-value">{{ formatMinutesToHours(summary.totalWorkMinutes) }}</span>
-                </div>
-                <div v-if="includeBreak" class="job-stat-row">
-                  <span class="job-stat-label">実労働時間</span>
-                  <span class="job-stat-value">{{ formatMinutesToHours(summary.totalActualWorkMinutes) }}</span>
-                </div>
-              </div>
-            </div>
+        <!-- 掛け持ち先ごとの統計（コンパクト版） -->
+        <div v-if="jobSummaries.length > 1" class="job-statistics-compact">
+          <div class="job-stat-compact-row" v-for="summary in jobSummaries" :key="summary.jobId || 'none'">
+            <span
+              v-if="summary.jobId"
+              class="job-stat-dot"
+              :style="{ backgroundColor: calendarStore.getJobById(summary.jobId)?.color }"
+            ></span>
+            <span class="job-stat-compact-name">
+              {{ summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : '掛け持ちなし' }}
+            </span>
+            <span class="job-stat-compact-value">{{ summary.workDays }}日・{{ formatMinutesToHours(summary.totalWorkMinutes) }}</span>
           </div>
         </div>
 
@@ -623,89 +581,6 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-/* 選択された日付セクション */
-.selected-dates-section {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.section-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #333;
-  margin: 0 0 1rem 0;
-  text-align: center;
-}
-
-.dates-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.date-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.5rem 0.75rem;
-  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-  border: 2px solid #dee2e6;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #333;
-  transition: all 0.2s ease;
-}
-
-.date-chip:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.date-chip.saturday {
-  color: #2563eb;
-  border-color: #93c5fd;
-  background: linear-gradient(135deg, #eff6ff, #dbeafe);
-}
-
-.date-chip.sunday,
-.date-chip.holiday {
-  color: #ef4444;
-  border-color: #fca5a5;
-  background: linear-gradient(135deg, #fef2f2, #fee2e2);
-}
-
-.job-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
-}
-
-.dates-summary {
-  text-align: center;
-  font-size: 0.9rem;
-  color: #666;
-  padding-top: 0.75rem;
-  border-top: 1px solid #e9ecef;
-}
-
-.dates-summary strong {
-  font-size: 1.1rem;
-  color: #667eea;
-  font-weight: 700;
-}
-
-.dates-summary span {
-  color: #999;
-  font-size: 0.85rem;
-}
-
 /* 確認テーブル */
 .confirm-table-wrapper {
   background: white;
@@ -915,104 +790,45 @@ onMounted(() => {
   background: #e0e0e0;
 }
 
-/* 掛け持ち先別統計 */
-.job-statistics {
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 2px solid #e0e0e0;
-}
-
-.job-stats-title {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #333;
-  margin: 0 0 1rem 0;
-  text-align: center;
-}
-
-.job-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-}
-
-.job-stat-card {
-  background: linear-gradient(135deg, #f9fafb, #ffffff);
-  border: 2px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 1rem;
-  transition: all 0.3s ease;
-}
-
-.job-stat-card:hover {
-  border-color: #667eea;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-  transform: translateY(-2px);
-}
-
-.job-stat-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.job-stat-indicator {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.job-stat-name {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #374151;
-}
-
-.job-stat-details {
+/* 掛け持ち先別統計（コンパクト版） */
+.job-statistics-compact {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e9ecef;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.job-stat-row {
+.job-stat-compact-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-}
-
-.job-stat-label {
-  font-size: 0.75rem;
-  color: #6b7280;
-  font-weight: 600;
-}
-
-.job-stat-value {
+  gap: 0.5rem;
   font-size: 0.85rem;
+}
+
+.job-stat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.job-stat-compact-name {
+  font-weight: 600;
+  color: #555;
+  min-width: 80px;
+}
+
+.job-stat-compact-value {
   font-weight: 700;
-  color: #111827;
+  color: #667eea;
 }
 
 /* レスポンシブ */
 @media (max-width: 768px) {
   .confirm-view {
     padding: 0.75rem;
-  }
-
-  .selected-dates-section {
-    padding: 1rem;
-  }
-
-  .section-title {
-    font-size: 1rem;
-  }
-
-  .date-chip {
-    font-size: 0.8rem;
-    padding: 0.4rem 0.6rem;
   }
 
   .confirm-table-wrapper {
