@@ -1103,6 +1103,21 @@ const handleBulkApplyAll = (type: BulkApplyType) => {
     selectedLabel = `${weekLabel}の${dayLabel}`
   }
 
+  // 12時間超え警告（両方を設定する場合のみ）
+  if (type === 'both') {
+    const { calculateWorkMinutes } = useTimeCalculation()
+    const workMinutes = calculateWorkMinutes(bulkSettings.value.startTime, bulkSettings.value.endTime)
+    if (workMinutes > 720) { // 720分 = 12時間
+      const hours = Math.floor(workMinutes / 60)
+      const minutes = workMinutes % 60
+      const workTimeStr = minutes > 0 ? `${hours}時間${minutes}分` : `${hours}時間`
+
+      if (!confirm(`設定する勤務時間が12時間を超えています（${workTimeStr}）。\n\n長時間勤務となりますが、一括適用してもよろしいですか？`)) {
+        return
+      }
+    }
+  }
+
   // 個別設定がある場合は選択肢を表示
   if (modifiedCount > 0) {
     confirmModalData.value = {
@@ -1402,6 +1417,21 @@ const confirmTimeEdit = () => {
   if (!isBulkMode.value && formattedStartTime.value === formattedEndTime.value) {
     alert('開始時刻と終了時刻が同じです。\n24時間勤務は設定できません。\n異なる時刻を選択してください。')
     return
+  }
+
+  // 12時間超え警告（個別設定モードのみ）
+  if (!isBulkMode.value) {
+    const { calculateWorkMinutes } = useTimeCalculation()
+    const workMinutes = calculateWorkMinutes(formattedStartTime.value, formattedEndTime.value)
+    if (workMinutes > 720) { // 720分 = 12時間
+      const hours = Math.floor(workMinutes / 60)
+      const minutes = workMinutes % 60
+      const workTimeStr = minutes > 0 ? `${hours}時間${minutes}分` : `${hours}時間`
+
+      if (!confirm(`勤務時間が12時間を超えています（${workTimeStr}）。\n\n長時間勤務となりますが、この設定でよろしいですか？`)) {
+        return
+      }
+    }
   }
 
   if (isBulkMode.value) {
