@@ -443,18 +443,14 @@ const generateShiftText = (): string => {
 
       const groupDays = group.workDays.filter(day => workDaysForSubmit.value.includes(day))
       groupDays.forEach(day => {
-        const workTime = formatWorkTime(day)
-        const status = getStatusText(day)
-        text += `${day.displayDate}: ${day.startTime}〜${day.endTime}（${workTime}）[${status}]\n`
+        text += `${day.displayDate}: ${day.startTime}〜${day.endTime}\n`
       })
       text += '\n'
     })
   } else {
     // 単一ジョブまたは掛け持ちなしの場合
     workDaysForSubmit.value.forEach(day => {
-      const workTime = formatWorkTime(day)
-      const status = getStatusText(day)
-      text += `${day.displayDate}: ${day.startTime}〜${day.endTime}（${workTime}）[${status}]\n`
+      text += `${day.displayDate}: ${day.startTime}〜${day.endTime}\n`
     })
     text += '\n'
   }
