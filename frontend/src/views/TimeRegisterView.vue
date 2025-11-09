@@ -104,12 +104,6 @@
           <div class="legend-item base-style">
             <div class="legend-card">過去ベース</div>
           </div>
-          <div class="legend-item overtime-warning">
-            <div class="legend-card">12時間超え</div>
-          </div>
-          <div class="legend-item severe-warning">
-            <div class="legend-card">23時間以上</div>
-          </div>
         </div>
       </div>
 
@@ -132,10 +126,34 @@
           >
             ⚠️
           </button>
+          <button
+            v-if="jobHasOvertimeWarning(group.job.id)"
+            @click="openOvertimeModal(group.job.id)"
+            class="overtime-warning-btn"
+            title="12時間超え勤務あり - クリックして詳細を表示"
+          >
+            ⚠️
+          </button>
         </div>
         <div v-else class="job-group-header no-job">
           <span class="job-color-indicator main-store-indicator"></span>
           <span class="job-name">{{ calendarStore.mainStoreDisplayName }}</span>
+          <button
+            v-if="jobHasConflicts(undefined)"
+            @click="openConflictModal(undefined)"
+            class="conflict-warning-btn"
+            title="時間重複あり - クリックして詳細を表示"
+          >
+            ⚠️
+          </button>
+          <button
+            v-if="jobHasOvertimeWarning(undefined)"
+            @click="openOvertimeModal(undefined)"
+            class="overtime-warning-btn"
+            title="12時間超え勤務あり - クリックして詳細を表示"
+          >
+            ⚠️
+          </button>
         </div>
 
         <!-- 勤務日カードリスト -->
@@ -150,7 +168,9 @@
               {
                 removed: workDay.isRemoved,
                 highlighted: isHighlighted(workDay),
-                conflict: hasConflict(workDay)
+                conflict: hasConflict(workDay),
+                overtime: hasOvertimeWarning(workDay),
+                'conflict-overtime': hasConflict(workDay) && hasOvertimeWarning(workDay)
               }
             ]"
           >
@@ -448,6 +468,42 @@
       </div>
     </Teleport>
 
+    <!-- 12時間超え詳細モーダル -->
+    <Teleport to="body">
+      <div v-if="showOvertimeModal && selectedJobForOvertime !== null" class="modal-overlay" @click="closeOvertimeModal" @touchmove.prevent>
+        <div class="modal-content overtime-modal" @click.stop @touchmove.stop>
+          <h3 class="modal-title">⚠️ 12時間超え勤務の詳細</h3>
+          <div class="overtime-content">
+            <div class="overtime-job-info">
+              <span class="overtime-job-label">対象:</span>
+              <span class="overtime-job-name">{{ getJobName(selectedJobForOvertime) }}</span>
+            </div>
+
+            <div class="overtime-list">
+              <div
+                v-for="(workDay, index) in getOvertimeWorkDaysForJob(selectedJobForOvertime)"
+                :key="index"
+                class="overtime-item"
+              >
+                <div class="overtime-date">{{ workDay.displayDate }}</div>
+                <div class="overtime-details">
+                  <div class="overtime-time-row">
+                    <span class="time-label">勤務時間:</span>
+                    <span class="time-value">{{ workDay.startTime }} 〜 {{ workDay.endTime }}</span>
+                  </div>
+                  <div class="overtime-warning-row">
+                    <span class="warning-icon">⚠️</span>
+                    <span class="warning-text">勤務時間: {{ formatMinutesToHours(workDay.workMinutes) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button @click="closeOvertimeModal" class="close-btn">閉じる</button>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- 時刻選択モーダル（Teleportでbody直下に配置） -->
     <Teleport to="body">
       <div v-if="showTimeModal" class="modal-overlay" @click="cancelTimeEdit" @touchmove.prevent>
@@ -675,6 +731,10 @@ const showHelpModal = ref(false)
 const showConflictModal = ref(false)
 const selectedJobForConflict = ref<JobId | undefined | null>(null)
 
+// 12時間超え詳細モーダルの状態
+const showOvertimeModal = ref(false)
+const selectedJobForOvertime = ref<JobId | undefined | null>(null)
+
 // 給与計算の状態
 const hourlyWage = ref<number>(1000) // 時給（デフォルト1000円）
 const calculatedSalary = ref<number>(0)
@@ -683,7 +743,7 @@ const salaryByJob = ref<Record<string, { jobId: number | undefined; salary: numb
 const jobWages = ref<Record<string, number>>({}) // 掛け持ち先ごとの時給
 
 // モーダル状態をPageSliderに提供（スライド制御用）
-provide('isModalOpen', computed(() => showTimeModal.value || showConfirmModal.value || showHelpModal.value || showConflictModal.value))
+provide('isModalOpen', computed(() => showTimeModal.value || showConfirmModal.value || showHelpModal.value || showConflictModal.value || showOvertimeModal.value))
 
 // アクティブな勤務日（削除されていない）
 const activeWorkDays = computed(() => {
@@ -754,6 +814,29 @@ const getConflictsForJob = (jobId: JobId | undefined): ConflictInfo[] => {
   )
 }
 
+// 特定のWorkDayに12時間超え警告があるかチェック
+const hasOvertimeWarning = (workDay: WorkDay): boolean => {
+  // 外された日は警告なし
+  if (workDay.isRemoved) return false
+  // 12時間（720分）を超えるかチェック
+  return workDay.workMinutes > 720
+}
+
+// 特定のジョブに12時間超えの勤務日があるかチェック
+const jobHasOvertimeWarning = (jobId: JobId | undefined): boolean => {
+  const jobWorkDays = workDays.value.filter(wd =>
+    wd.jobId === jobId && !wd.isRemoved
+  )
+  return jobWorkDays.some(wd => wd.workMinutes > 720)
+}
+
+// 特定のジョブの12時間超え勤務日を取得
+const getOvertimeWorkDaysForJob = (jobId: JobId | undefined): WorkDay[] => {
+  return workDays.value.filter(wd =>
+    wd.jobId === jobId && !wd.isRemoved && wd.workMinutes > 720
+  )
+}
+
 // 重複詳細モーダルを開く
 const openConflictModal = (jobId: JobId | undefined) => {
   selectedJobForConflict.value = jobId
@@ -764,6 +847,18 @@ const openConflictModal = (jobId: JobId | undefined) => {
 const closeConflictModal = () => {
   showConflictModal.value = false
   selectedJobForConflict.value = null
+}
+
+// 12時間超え詳細モーダルを開く
+const openOvertimeModal = (jobId: JobId | undefined) => {
+  selectedJobForOvertime.value = jobId
+  showOvertimeModal.value = true
+}
+
+// 12時間超え詳細モーダルを閉じる
+const closeOvertimeModal = () => {
+  showOvertimeModal.value = false
+  selectedJobForOvertime.value = null
 }
 
 // 重複時間を分から時刻形式に変換（例: 540分 → "9:00"）
@@ -851,38 +946,6 @@ const loadDefaultTimes = () => {
 
 // カードの背景色クラスを取得
 const getCardBackgroundClass = (workDay: WorkDay) => {
-  // 外された日は既存の色分けを使用
-  if (workDay.isRemoved) {
-    // 個別設定が存在する場合は常に黄色（最優先）
-    if (workDay.startTimeSetBy === 'custom' || workDay.endTimeSetBy === 'custom') {
-      return 'custom-style'
-    }
-    // 過去ベースの設定がある場合
-    if (workDay.startTimeSetBy === 'base' || workDay.endTimeSetBy === 'base') {
-      return 'base-style'
-    }
-    // 一括設定がある場合
-    if (workDay.startTimeSetBy === 'bulk' || workDay.endTimeSetBy === 'bulk') {
-      return 'bulk-style'
-    }
-    // デフォルトの場合
-    return 'default-style'
-  }
-
-  // 警告表示（勤務時間が長すぎる場合）
-  const workMinutes = workDay.workMinutes
-
-  // 23時間以上（1380分以上）：深刻な警告（赤）
-  if (workMinutes >= 1380) {
-    return 'severe-warning'
-  }
-
-  // 12時間超え（720分超）：警告（オレンジ/黄色）
-  if (workMinutes > 720) {
-    return 'overtime-warning'
-  }
-
-  // 通常の色分けロジック
   // 個別設定が存在する場合は常に黄色（最優先）
   if (workDay.startTimeSetBy === 'custom' || workDay.endTimeSetBy === 'custom') {
     return 'custom-style'
@@ -1983,6 +2046,32 @@ const confirmTimeEdit = () => {
   transform: scale(0.95);
 }
 
+.overtime-warning-btn {
+  margin-left: 0.25rem;
+  background: rgba(255, 193, 7, 0.1);
+  border: 2px solid rgba(255, 193, 7, 0.5);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.overtime-warning-btn:hover {
+  background: rgba(255, 193, 7, 0.2);
+  border-color: rgba(255, 193, 7, 0.7);
+  transform: scale(1.1);
+}
+
+.overtime-warning-btn:active {
+  transform: scale(0.95);
+}
+
 /* 勤務日カードリスト */
 .work-days-list {
   display: flex;
@@ -2173,6 +2262,37 @@ const confirmTimeEdit = () => {
   box-shadow: 0 0 16px rgba(255, 0, 0, 0.6),
               0 6px 12px rgba(0, 0, 0, 0.2);
   border-color: #ff0000;
+}
+
+/* 12時間超えの黄色枠（蛍光色） */
+.work-day-card.overtime {
+  border: 3px solid #ffff00;
+  border-left-width: 4px !important;
+  box-shadow: 0 0 12px rgba(255, 255, 0, 0.5),
+              0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.work-day-card.overtime:hover {
+  box-shadow: 0 0 16px rgba(255, 255, 0, 0.6),
+              0 6px 12px rgba(0, 0, 0, 0.2);
+  border-color: #ffff00;
+}
+
+/* 12時間超え+時間重複の場合: 左側が黄色、右側が赤色の枠線 */
+.work-day-card.conflict-overtime {
+  border: 3px solid transparent;
+  border-left: 4px solid #ffff00 !important;
+  border-right: 4px solid #ff0000 !important;
+  border-top: 3px solid #ffaa00;
+  border-bottom: 3px solid #ffaa00;
+  box-shadow: 0 0 12px rgba(255, 170, 0, 0.5),
+              0 4px 8px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(to right, rgba(255, 255, 0, 0.03) 50%, rgba(255, 0, 0, 0.03) 50%);
+}
+
+.work-day-card.conflict-overtime:hover {
+  box-shadow: 0 0 16px rgba(255, 170, 0, 0.6),
+              0 6px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* 時刻テキストの色 */
@@ -3024,6 +3144,114 @@ const confirmTimeEdit = () => {
   font-size: 0.875rem;
   font-weight: 700;
   color: #ff4500;
+}
+
+/* 12時間超え詳細モーダル */
+.overtime-modal {
+  max-width: 500px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.overtime-content {
+  margin-bottom: 1.5rem;
+}
+
+.overtime-job-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 235, 59, 0.15));
+  border-radius: 8px;
+  border-left: 4px solid #ffc107;
+}
+
+.overtime-job-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #666;
+}
+
+.overtime-job-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.overtime-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.overtime-item {
+  padding: 1rem;
+  background: white;
+  border: 2px solid rgba(255, 193, 7, 0.4);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(255, 193, 7, 0.15);
+}
+
+.overtime-date {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #f57c00;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.overtime-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.overtime-time-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  background: rgba(102, 126, 234, 0.05);
+  border-radius: 6px;
+}
+
+.overtime-time-row .time-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #666;
+  min-width: 80px;
+}
+
+.overtime-time-row .time-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #555;
+  font-family: 'Courier New', monospace;
+}
+
+.overtime-warning-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(255, 193, 7, 0.15);
+  border-radius: 6px;
+  margin: 0.25rem 0;
+}
+
+.overtime-warning-row .warning-icon {
+  font-size: 1.2rem;
+}
+
+.overtime-warning-row .warning-text {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #f57c00;
 }
 
 .close-btn {
