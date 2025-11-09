@@ -282,8 +282,8 @@ const createFromBase = () => {
   }
 
   // カレンダーの選択をクリア
-  calendarStore.clearAll()
-  calendarStore.dateJobMap = {} // 掛け持ち情報も完全にクリア
+  calendarStore.selectedDates.clear()
+  calendarStore.dateJobMap = {}
 
   // 保存されたシフトの各勤務日について、同じ曜日・週番号の日付を見つける
   const datesToSelect: string[] = []
@@ -390,14 +390,16 @@ const createFromBase = () => {
 
   // メイン選択のみをselectedDatesに追加
   mainDates.forEach(date => {
-    calendarStore.selectDate(date)
+    calendarStore.selectedDates.add(date)
   })
 
-  // 掛け持ち情報をdateJobMapに設定
-  calendarStore.dateJobMap = { ...dateJobMap }
+  // 掛け持ち情報をdateJobMapに設定（各日付ごとに個別に設定）
+  Object.keys(dateJobMap).forEach(dateString => {
+    calendarStore.dateJobMap[dateString] = [...dateJobMap[dateString]]
+  })
 
   // 選択された日付でworkDaysを初期化（掛け持ち情報を含む）
-  timeRegisterStore.initializeFromDates(datesToSelect, dateJobMap, mainDates)
+  timeRegisterStore.initializeFromDates(datesToSelect, calendarStore.dateJobMap, calendarStore.selectedDates)
 
   // 保存されたシフトの時間を適用
   timeRegisterStore.workDays.forEach((workDay, index) => {
