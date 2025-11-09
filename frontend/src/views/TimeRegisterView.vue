@@ -2288,8 +2288,8 @@ const confirmTimeEdit = () => {
 }
 
 .job-summary-detailed-card {
-  margin-bottom: 1rem;
-  padding: 1rem;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
   border: 2px solid rgba(102, 126, 234, 0.2);
   border-radius: 10px;
@@ -2299,38 +2299,38 @@ const confirmTimeEdit = () => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.4rem;
   border-bottom: 1px solid rgba(102, 126, 234, 0.2);
 }
 
 .job-summary-name {
   font-weight: 700;
   color: #333;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .job-summary-details {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.4rem;
 }
 
 .job-stat-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.25rem 0;
+  padding: 0.15rem 0;
 }
 
 .job-stat-label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #666;
   font-weight: 600;
 }
 
 .job-stat-value {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: #667eea;
 }
@@ -2338,26 +2338,28 @@ const confirmTimeEdit = () => {
 .job-wage-input-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  padding: 0.75rem;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.75rem;
   background: rgba(255, 255, 255, 0.7);
   border-radius: 8px;
 }
 
 .job-wage-label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: #555;
-  min-width: 40px;
+  min-width: 35px;
+  flex-shrink: 0;
 }
 
 .job-wage-input {
   flex: 1;
-  padding: 0.5rem;
+  min-width: 0;
+  padding: 0.4rem 0.5rem;
   border: 2px solid #e0e0e0;
   border-radius: 6px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
   text-align: right;
   transition: border-color 0.2s ease;
@@ -2369,30 +2371,32 @@ const confirmTimeEdit = () => {
 }
 
 .job-wage-unit {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #666;
   font-weight: 600;
+  flex-shrink: 0;
+  min-width: 20px;
 }
 
 .job-salary-result {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem;
+  padding: 0.5rem 0.75rem;
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05));
   border: 2px solid #6ee7b7;
   border-radius: 8px;
-  margin-top: 0.5rem;
+  margin-top: 0.4rem;
 }
 
 .job-salary-label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: #047857;
 }
 
 .job-salary-value {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: #059669;
 }
