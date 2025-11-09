@@ -172,6 +172,8 @@ export interface TimeRegisterState {
   showSubmitModal: boolean
   /** 時間ピッカーの状態 */
   timePicker: TimePickerState
+  /** 選択中の掛け持ち先フィルター（nullはすべて、undefinedはメイン店舗のみ、JobIdは特定の掛け持ち先） */
+  selectedJobFilter: JobId | undefined | null
 }
 
 /**

@@ -75,7 +75,8 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
         currentCardIndex: null,
         selectedStartTime: defaultTimes.main.startTime,
         selectedEndTime: defaultTimes.main.endTime
-      }
+      },
+      selectedJobFilter: null // 初期状態はすべて表示
     }
   },
 
@@ -514,6 +515,21 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
       if (saved) {
         this.jobDefaultTimes = JSON.parse(saved)
       }
+    },
+
+    /**
+     * 掛け持ち先フィルターを設定
+     * @param jobId null=すべて表示, undefined=メイン店舗のみ, JobId=特定の掛け持ち先のみ
+     */
+    setSelectedJobFilter(jobId: JobId | undefined | null) {
+      this.selectedJobFilter = jobId
+    },
+
+    /**
+     * 掛け持ち先フィルターをクリア（すべて表示）
+     */
+    clearSelectedJobFilter() {
+      this.selectedJobFilter = null
     },
 
     /**
