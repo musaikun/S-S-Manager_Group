@@ -358,7 +358,7 @@
               :class="{ active: selectedStartMinute === minute }"
               @click="selectStartMinute(minute)"
             >
-              {{ String(minute).padStart(2, '0') }}
+              {{ String(minute).padStart(2, '0') }}分
             </button>
           </div>
 
@@ -412,7 +412,7 @@
               :class="{ active: selectedEndMinute === minute }"
               @click="selectEndMinute(minute)"
             >
-              {{ String(minute).padStart(2, '0') }}
+              {{ String(minute).padStart(2, '0') }}分
             </button>
           </div>
 

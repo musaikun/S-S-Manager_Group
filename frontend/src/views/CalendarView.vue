@@ -326,7 +326,13 @@ const handleClearAll = () => {
     }
   }
 
-  clearAll()
+  // すべての日付をクリア（掛け持ち設定も含む）
+  store.selectedDates.clear()
+  store.dateJobMap = {}
+
+  // 時間登録の状態もクリア
+  timeRegisterStore.workDays = []
+  timeRegisterStore.remarks = ''
 }
 
 // 曜日別選択（確認付き）

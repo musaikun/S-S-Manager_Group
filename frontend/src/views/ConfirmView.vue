@@ -1,42 +1,53 @@
 <template>
   <div class="confirm-view">
     <div class="confirm-container">
-      <!-- 確認テーブル -->
-      <div class="confirm-table-wrapper">
-        <table class="confirm-table">
-          <thead>
-            <tr>
-              <th>日付</th>
-              <th>時間</th>
-              <th>勤務時間</th>
-              <th>設定</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(workDay, index) in activeWorkDays"
-              :key="workDay.date"
-              :class="{ modified: workDay.isModified }"
-            >
-              <td class="date-cell" :class="{
-                'saturday': workDay.dayOfWeek === 6,
-                'sunday': workDay.dayOfWeek === 0,
-                'holiday': isHoliday(workDay.date)
-              }">{{ workDay.displayDate }}</td>
-              <td class="time-cell">
-                <span :class="getStartTimeClass(workDay)">{{ workDay.startTime }}</span>
-                <span class="separator">〜</span>
-                <span :class="getEndTimeClass(workDay)">{{ workDay.endTime }}</span>
-              </td>
-              <td class="hours-cell">
-                <div v-html="formatWorkTime(workDay)"></div>
-              </td>
-              <td class="status-cell">
-                <span :class="getStatusBadgeClass(workDay)">{{ getStatusText(workDay) }}</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- 確認テーブル（ジョブごとにグループ分け） -->
+      <div v-for="(group, groupIndex) in workDaysByJob" :key="groupIndex" class="job-group">
+        <!-- ジョブヘッダー -->
+        <div v-if="group.job" class="job-group-header" :style="{ borderLeftColor: group.job.color }">
+          <span class="job-color-indicator" :style="{ backgroundColor: group.job.color }"></span>
+          <span class="job-name">{{ group.job.name }}</span>
+        </div>
+        <div v-else class="job-group-header no-job">
+          <span class="job-name">掛け持ちなし</span>
+        </div>
+
+        <div class="confirm-table-wrapper">
+          <table class="confirm-table">
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>時間</th>
+                <th>勤務時間</th>
+                <th>設定</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(workDay, index) in group.workDays"
+                :key="`${workDay.date}_${workDay.jobId || 'none'}`"
+                :class="{ modified: workDay.isModified }"
+              >
+                <td class="date-cell" :class="{
+                  'saturday': workDay.dayOfWeek === 6,
+                  'sunday': workDay.dayOfWeek === 0,
+                  'holiday': isHoliday(workDay.date)
+                }">{{ workDay.displayDate }}</td>
+                <td class="time-cell">
+                  <span :class="getStartTimeClass(workDay)">{{ workDay.startTime }}</span>
+                  <span class="separator">〜</span>
+                  <span :class="getEndTimeClass(workDay)">{{ workDay.endTime }}</span>
+                </td>
+                <td class="hours-cell">
+                  <div v-html="formatWorkTime(workDay)"></div>
+                </td>
+                <td class="status-cell">
+                  <span :class="getStatusBadgeClass(workDay)">{{ getStatusText(workDay) }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- 合計統計と備考の統合カード -->
@@ -112,12 +123,14 @@
 import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useTimeRegisterStore } from '../stores/timeRegister'
+import { useCalendarStore } from '../stores/calendar'
 import { useTimeFormat } from '../composables/useTimeFormat'
 import { useTimeCalculation } from '../composables/useTimeCalculation'
 import { useHolidays } from '../composables/useHolidays'
 import type { WorkDay } from '../types/timeRegister'
 
 const timeRegisterStore = useTimeRegisterStore()
+const calendarStore = useCalendarStore()
 const { isHoliday } = useHolidays()
 
 const { includeBreak, workDays, showSubmitModal } = storeToRefs(timeRegisterStore)
@@ -129,6 +142,28 @@ const { calculateBreakTime } = useTimeCalculation()
 // アクティブな勤務日（削除されていない）
 const activeWorkDays = computed(() => {
   return workDays.value.filter(wd => !wd.isRemoved)
+})
+
+// ジョブごとにグループ化されたWorkDays
+const workDaysByJob = computed(() => {
+  const grouped: Record<string, { job: any; workDays: WorkDay[] }> = {}
+
+  activeWorkDays.value.forEach((day) => {
+    const jobId = day.jobId
+    const key = jobId?.toString() || 'none'
+
+    if (!grouped[key]) {
+      const job = jobId ? calendarStore.getJobById(jobId) : null
+      grouped[key] = {
+        job,
+        workDays: []
+      }
+    }
+
+    grouped[key].workDays.push(day)
+  })
+
+  return Object.values(grouped)
 })
 
 // 勤務時間のフォーマット
