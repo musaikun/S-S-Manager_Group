@@ -15,19 +15,33 @@ import type {
 } from '../types/timeRegister'
 import type { DateString, DateJobMap, JobId } from '../types/calendar'
 
-// LocalStorageからデフォルト時刻を読み込む
+// LocalStorageからデフォルト時刻を読み込む（新形式に対応）
 const loadDefaultTimes = () => {
   const saved = localStorage.getItem('defaultTimes')
   if (saved) {
     const parsed = JSON.parse(saved)
+    // 古い形式（直接startTime/endTimeがある）の場合
+    if (parsed.startTime && parsed.endTime && !parsed.main) {
+      return {
+        main: {
+          startTime: parsed.startTime || '09:00',
+          endTime: parsed.endTime || '18:00'
+        },
+        jobs: {}
+      }
+    }
+    // 新形式の場合
     return {
-      startTime: parsed.startTime || '09:00',
-      endTime: parsed.endTime || '18:00'
+      main: parsed.main || { startTime: '09:00', endTime: '18:00' },
+      jobs: parsed.jobs || {}
     }
   }
   return {
-    startTime: '09:00',
-    endTime: '18:00'
+    main: {
+      startTime: '09:00',
+      endTime: '18:00'
+    },
+    jobs: {}
   }
 }
 
@@ -37,13 +51,21 @@ const loadDefaultTimes = () => {
 export const useTimeRegisterStore = defineStore('timeRegister', {
   state: (): TimeRegisterState => {
     const defaultTimes = loadDefaultTimes()
+    // jobDefaultTimesを作成
+    const jobDefaultTimes: Record<string, { startTime: string; endTime: string }> = {}
+    Object.entries(defaultTimes.jobs).forEach(([jobId, times]) => {
+      if (times) {
+        jobDefaultTimes[jobId] = times
+      }
+    })
+
     return {
       workDays: [],
       bulkSettings: {
-        startTime: defaultTimes.startTime,
-        endTime: defaultTimes.endTime
+        startTime: defaultTimes.main.startTime,
+        endTime: defaultTimes.main.endTime
       },
-      jobDefaultTimes: {},
+      jobDefaultTimes,
       includeBreak: false,
       remarks: '',
       showSubmitModal: false,
@@ -51,8 +73,8 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
         isOpen: false,
         mode: 'card',
         currentCardIndex: null,
-        selectedStartTime: defaultTimes.startTime,
-        selectedEndTime: defaultTimes.endTime
+        selectedStartTime: defaultTimes.main.startTime,
+        selectedEndTime: defaultTimes.main.endTime
       }
     }
   },
@@ -267,11 +289,13 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
           const weekNumber = getWeekNumber(date)
 
           // jobIdに応じたデフォルト時刻を取得
-          let jobTimes = defaultTimes
+          let jobTimes = defaultTimes.main
           if (jobId !== undefined) {
             const jobKey = jobId.toString()
             if (this.jobDefaultTimes[jobKey]) {
               jobTimes = this.jobDefaultTimes[jobKey]
+            } else if (defaultTimes.jobs[jobId]) {
+              jobTimes = defaultTimes.jobs[jobId]
             }
           }
 
@@ -341,11 +365,13 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
             const weekNumber = getWeekNumber(date)
 
             // jobIdに応じたデフォルト時刻を取得
-            let jobTimes = defaultTimes
+            let jobTimes = defaultTimes.main
             if (jobId !== undefined) {
               const jobKey = jobId.toString()
               if (this.jobDefaultTimes[jobKey]) {
                 jobTimes = this.jobDefaultTimes[jobKey]
+              } else if (defaultTimes.jobs[jobId]) {
+                jobTimes = defaultTimes.jobs[jobId]
               }
             }
 
