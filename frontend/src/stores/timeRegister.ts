@@ -310,9 +310,12 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
       const workDaysList: WorkDay[] = []
 
       dates.forEach(date => {
-        const jobIds = dateJobMap[date] || [undefined as any]
+        const jobIds = dateJobMap[date] || []
 
-        jobIds.forEach(jobId => {
+        // メイン(undefined) + 掛け持ち先のjobIdsを結合
+        const allJobIds: (JobId | undefined)[] = [undefined as any, ...jobIds]
+
+        allJobIds.forEach(jobId => {
           const key = `${date}_${jobId || 'none'}`
           const existing = existingWorkDaysMap.get(key)
 
@@ -320,20 +323,29 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
             // 既存の設定を保持
             workDaysList.push(existing)
           } else {
-            // 新しく追加された日付（常にデフォルト時刻を使用）
+            // 新しく追加された日付（jobIdに応じたデフォルト時刻を使用）
             const dateObj = new Date(date)
             const dayOfWeek = dateObj.getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6
             const weekNumber = getWeekNumber(date)
+
+            // jobIdに応じたデフォルト時刻を取得
+            let jobTimes = defaultTimes
+            if (jobId !== undefined) {
+              const jobKey = jobId.toString()
+              if (this.jobDefaultTimes[jobKey]) {
+                jobTimes = this.jobDefaultTimes[jobKey]
+              }
+            }
 
             workDaysList.push({
               date,
               dayOfWeek,
               weekNumber,
-              startTime: defaultTimes.startTime,
-              endTime: defaultTimes.endTime,
-              initialStartTime: defaultTimes.startTime,
-              initialEndTime: defaultTimes.endTime,
-              workMinutes: calculateWorkMinutes(defaultTimes.startTime, defaultTimes.endTime),
+              startTime: jobTimes.startTime,
+              endTime: jobTimes.endTime,
+              initialStartTime: jobTimes.startTime,
+              initialEndTime: jobTimes.endTime,
+              workMinutes: calculateWorkMinutes(jobTimes.startTime, jobTimes.endTime),
               isModified: false,
               isRemoved: false,
               displayDate: formatDisplayDate(dateObj, dayOfWeek),

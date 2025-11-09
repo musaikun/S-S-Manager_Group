@@ -146,28 +146,32 @@ export const useCalendarStore = defineStore('calendar', {
         }
       } else {
         // 掛け持ちモードの場合
-        const jobIds = this.dateJobMap[dateString] || []
-        const index = jobIds.indexOf(this.currentJobId)
+        const currentJobIds = this.dateJobMap[dateString] || []
+        const index = currentJobIds.indexOf(this.currentJobId)
 
         if (index > -1) {
-          // 既に選択されている場合は削除
-          jobIds.splice(index, 1)
-          if (jobIds.length === 0 && !this.selectedDates.has(dateString)) {
+          // 既に選択されている場合は削除（新しい配列を作成）
+          const newJobIds = [...currentJobIds]
+          newJobIds.splice(index, 1)
+
+          if (newJobIds.length === 0 && !this.selectedDates.has(dateString)) {
             // 掛け持ち先もメインも無い場合は完全に削除
             delete this.dateJobMap[dateString]
-          } else if (jobIds.length === 0) {
+          } else if (newJobIds.length === 0) {
             // メインのみ残っている場合
             delete this.dateJobMap[dateString]
           } else {
-            this.dateJobMap[dateString] = jobIds
+            this.dateJobMap[dateString] = newJobIds
           }
         } else {
-          // 選択されていない場合は追加
-          jobIds.push(this.currentJobId)
-          this.dateJobMap[dateString] = jobIds
+          // 選択されていない場合は追加（新しい配列を作成）
+          this.dateJobMap[dateString] = [...currentJobIds, this.currentJobId]
           this.selectedDates.add(dateString)
         }
       }
+
+      // LocalStorageに保存
+      this.saveJobsToLocalStorage()
     },
 
     /**
