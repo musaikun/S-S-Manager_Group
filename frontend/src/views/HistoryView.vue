@@ -398,6 +398,9 @@ const createFromBase = () => {
     calendarStore.dateJobMap[dateString] = [...dateJobMap[dateString]]
   })
 
+  // LocalStorageに保存（画面遷移時に消えないようにするため）
+  calendarStore.saveJobsToLocalStorage()
+
   // 選択された日付でworkDaysを初期化（掛け持ち情報を含む）
   timeRegisterStore.initializeFromDates(datesToSelect, calendarStore.dateJobMap, calendarStore.selectedDates)
 
