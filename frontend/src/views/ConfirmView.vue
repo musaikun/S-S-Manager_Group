@@ -808,4 +808,38 @@ const copyToClipboard = async () => {
 .close-modal-btn:hover {
   background: #e0e0e0;
 }
+
+/* ジョブグループ */
+.job-group {
+  margin-bottom: 1.5rem;
+}
+
+.job-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  border-radius: 8px;
+  border-left: 4px solid;
+  font-weight: bold;
+}
+
+.job-group-header.no-job {
+  border-left-color: #9ca3af;
+  background: linear-gradient(135deg, rgba(156, 163, 175, 0.1), rgba(209, 213, 219, 0.1));
+}
+
+.job-color-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.job-name {
+  font-size: 1.05rem;
+  color: #333;
+}
 </style>

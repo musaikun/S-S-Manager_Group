@@ -186,6 +186,9 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
      * カレンダーの選択状態と同期（個別設定を保持）
      */
     syncWithSelectedDates(dates: DateString[], dateJobMap: DateJobMap = {}) {
+      // デフォルト時刻を取得（一括設定ではなく、常にヘッダー設定の時刻を使用）
+      const defaultTimes = loadDefaultTimes()
+
       // 既存のworkDaysを日付+jobIdでマップ化
       const existingWorkDaysMap = new Map(
         this.workDays.map(wd => [`${wd.date}_${wd.jobId || 'none'}`, wd])
@@ -204,7 +207,7 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
             // 既存の設定を保持
             workDaysList.push(existing)
           } else {
-            // 新しく追加された日付
+            // 新しく追加された日付（常にデフォルト時刻を使用）
             const dateObj = new Date(date)
             const dayOfWeek = dateObj.getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6
             const weekNumber = getWeekNumber(date)
@@ -213,11 +216,11 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
               date,
               dayOfWeek,
               weekNumber,
-              startTime: this.bulkSettings.startTime,
-              endTime: this.bulkSettings.endTime,
-              initialStartTime: this.bulkSettings.startTime,
-              initialEndTime: this.bulkSettings.endTime,
-              workMinutes: calculateWorkMinutes(this.bulkSettings.startTime, this.bulkSettings.endTime),
+              startTime: defaultTimes.startTime,
+              endTime: defaultTimes.endTime,
+              initialStartTime: defaultTimes.startTime,
+              initialEndTime: defaultTimes.endTime,
+              workMinutes: calculateWorkMinutes(defaultTimes.startTime, defaultTimes.endTime),
               isModified: false,
               isRemoved: false,
               displayDate: formatDisplayDate(dateObj, dayOfWeek),
