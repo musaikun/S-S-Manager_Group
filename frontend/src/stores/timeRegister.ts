@@ -4,6 +4,7 @@ import type {
   WorkDay,
   BulkSettings,
   TotalSummary,
+  JobSummary,
   TimePickerState,
   BulkApplyType,
   BulkApplyTarget,
@@ -136,6 +137,41 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
       })
 
       return grouped
+    },
+
+    /**
+     * ジョブごとの合計情報
+     */
+    jobSummaries: (state): JobSummary[] => {
+      const activeWorkDays = state.workDays.filter(day => !day.isRemoved)
+      const jobMap: Record<string, JobSummary> = {}
+
+      activeWorkDays.forEach(day => {
+        const key = day.jobId?.toString() || 'none'
+
+        if (!jobMap[key]) {
+          jobMap[key] = {
+            jobId: day.jobId,
+            workDays: 0,
+            totalWorkMinutes: 0,
+            totalActualWorkMinutes: 0,
+            totalBreakMinutes: 0
+          }
+        }
+
+        jobMap[key].workDays++
+        jobMap[key].totalWorkMinutes += day.workMinutes
+
+        if (state.includeBreak) {
+          const breakMinutes = calculateBreakTime(day.workMinutes)
+          jobMap[key].totalBreakMinutes += breakMinutes
+          jobMap[key].totalActualWorkMinutes += day.workMinutes - breakMinutes
+        } else {
+          jobMap[key].totalActualWorkMinutes += day.workMinutes
+        }
+      })
+
+      return Object.values(jobMap)
     },
 
     /**

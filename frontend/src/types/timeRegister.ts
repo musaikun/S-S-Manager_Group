@@ -137,6 +137,22 @@ export interface TotalSummary {
 }
 
 /**
+ * ジョブごとの合計情報
+ */
+export interface JobSummary {
+  /** ジョブID */
+  jobId: JobId | undefined
+  /** 出勤日数 */
+  workDays: number
+  /** 合計勤務時間（分） */
+  totalWorkMinutes: number
+  /** 合計実労働時間（分）- 休憩を引いた時間 */
+  totalActualWorkMinutes: number
+  /** 合計休憩時間（分） */
+  totalBreakMinutes: number
+}
+
+/**
  * 時間登録画面の状態
  */
 export interface TimeRegisterState {

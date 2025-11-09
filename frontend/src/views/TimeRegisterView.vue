@@ -215,6 +215,32 @@
             </span>
           </div>
 
+          <!-- 掛け持ち先ごとの統計 -->
+          <div v-if="jobSummaries.length > 1" class="job-summaries-section">
+            <h4 class="job-summaries-title">掛け持ち先ごとの統計</h4>
+            <div
+              v-for="summary in jobSummaries"
+              :key="summary.jobId || 'none'"
+              class="job-summary-item"
+            >
+              <div class="job-summary-header">
+                <span
+                  v-if="summary.jobId"
+                  class="job-color-dot"
+                  :style="{ backgroundColor: calendarStore.getJobById(summary.jobId)?.color }"
+                ></span>
+                <span class="job-summary-name">
+                  {{ summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : '掛け持ちなし' }}
+                </span>
+              </div>
+              <div class="job-summary-stats">
+                <span class="job-stat">{{ summary.workDays }}日</span>
+                <span class="job-stat-separator">・</span>
+                <span class="job-stat">{{ formatMinutesToHours(includeBreak ? summary.totalActualWorkMinutes : summary.totalWorkMinutes) }}</span>
+              </div>
+            </div>
+          </div>
+
           <!-- 給与簡易概算 -->
           <div class="salary-calc-section">
             <div class="salary-input-row">
@@ -233,10 +259,39 @@
 
             <!-- 給与計算結果 -->
             <div v-if="calculatedSalary > 0" class="salary-result">
-              <div class="salary-result-row">
-                <span class="salary-result-label">概算給与:</span>
+              <!-- 合計給与 -->
+              <div class="salary-result-row total-salary">
+                <span class="salary-result-label">合計給与:</span>
                 <span class="salary-result-value">{{ calculatedSalary.toLocaleString() }}円</span>
               </div>
+
+              <!-- 掛け持ち先ごとの給与 -->
+              <div v-if="showSalaryByJob" class="salary-by-job-section">
+                <div class="salary-by-job-header">
+                  <span class="salary-by-job-title">掛け持ち先別</span>
+                  <button @click="showSalaryByJob = !showSalaryByJob" class="toggle-salary-btn">
+                    {{ showSalaryByJob ? '▼' : '▶' }}
+                  </button>
+                </div>
+                <div class="salary-by-job-list">
+                  <div
+                    v-for="(item, key) in salaryByJob"
+                    :key="key"
+                    class="salary-by-job-item"
+                  >
+                    <div class="salary-job-name">
+                      <span
+                        v-if="item.jobId"
+                        class="salary-job-dot"
+                        :style="{ backgroundColor: calendarStore.getJobById(item.jobId)?.color }"
+                      ></span>
+                      <span>{{ item.jobId ? calendarStore.getJobById(item.jobId)?.name : '掛け持ちなし' }}</span>
+                    </div>
+                    <span class="salary-job-value">{{ item.salary.toLocaleString() }}円</span>
+                  </div>
+                </div>
+              </div>
+
               <div class="salary-result-note">
                 ※ 深夜給（22:00～05:00は25%増）を含む概算です。<br>
                 ※ 各種税金や社会保険料などの控除を考慮していません。
@@ -509,6 +564,9 @@ const { totalSummary } = storeToRefs(timeRegisterStore)
 // 重複情報をストアから取得
 const timeConflicts = computed(() => timeRegisterStore.timeConflicts)
 
+// ジョブごとの統計を取得
+const jobSummaries = computed(() => timeRegisterStore.jobSummaries)
+
 const { formatMinutesToHours } = useTimeFormat()
 const { calculateBreakTime, getWeeksInMonth } = useTimeCalculation()
 
@@ -578,6 +636,8 @@ const selectedJobForConflict = ref<JobId | null>(null)
 // 給与計算の状態
 const hourlyWage = ref<number>(1000) // 時給（デフォルト1000円）
 const calculatedSalary = ref<number>(0)
+const showSalaryByJob = ref<boolean>(false) // 掛け持ち先別給与を表示するか
+const salaryByJob = ref<Record<string, { jobId: number | undefined; salary: number }>>({})  // 掛け持ち先ごとの給与
 
 // モーダル状態をPageSliderに提供（スライド制御用）
 provide('isModalOpen', computed(() => showTimeModal.value || showConfirmModal.value || showHelpModal.value || showConflictModal.value))
@@ -1099,6 +1159,7 @@ const calculateSalary = () => {
   if (wage <= 0) return
 
   let totalSalary = 0
+  const jobSalaries: Record<string, { jobId: number | undefined; salary: number }> = {}
 
   // 各勤務日ごとに計算
   workDays.value.forEach(workDay => {
@@ -1122,14 +1183,36 @@ const calculateSalary = () => {
 
     // 通常時間の給与
     const normalHours = normalMinutes / 60
-    totalSalary += normalHours * wage
+    const normalSalary = normalHours * wage
 
     // 深夜時間の給与（25%増）
     const lateNightHours = actualLateNightMinutes / 60
-    totalSalary += lateNightHours * wage * 1.25
+    const lateNightSalary = lateNightHours * wage * 1.25
+
+    const daySalary = normalSalary + lateNightSalary
+    totalSalary += daySalary
+
+    // 掛け持ち先ごとに集計
+    const jobKey = workDay.jobId?.toString() || 'none'
+    if (!jobSalaries[jobKey]) {
+      jobSalaries[jobKey] = {
+        jobId: workDay.jobId,
+        salary: 0
+      }
+    }
+    jobSalaries[jobKey].salary += daySalary
   })
 
   calculatedSalary.value = Math.floor(totalSalary)
+
+  // 掛け持ち先ごとの給与を保存（小数点以下切り捨て）
+  Object.keys(jobSalaries).forEach(key => {
+    jobSalaries[key].salary = Math.floor(jobSalaries[key].salary)
+  })
+  salaryByJob.value = jobSalaries
+
+  // 掛け持ちがある場合は自動的に詳細を表示
+  showSalaryByJob.value = Object.keys(jobSalaries).length > 1
 }
 
 // workDaysが変更されたら自動で再計算
@@ -2121,6 +2204,63 @@ const confirmTimeEdit = () => {
   transform: scale(1.1);
 }
 
+/* 掛け持ち先ごとの統計 */
+.job-summaries-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 2px solid #e0e0e0;
+}
+
+.job-summaries-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 0.75rem;
+}
+
+.job-summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+  border-radius: 8px;
+  border-left: 3px solid rgba(102, 126, 234, 0.3);
+}
+
+.job-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.job-color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.job-summary-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.job-summary-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.job-stat-separator {
+  color: #999;
+}
+
 /* 給与計算セクション */
 .salary-calc-section {
   margin-top: 1rem;
@@ -2200,6 +2340,76 @@ const confirmTimeEdit = () => {
 
 .salary-result-value {
   font-size: 1.5rem;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.salary-result-row.total-salary {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.salary-by-job-section {
+  margin: 0.75rem 0;
+}
+
+.salary-by-job-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.salary-by-job-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #666;
+}
+
+.toggle-salary-btn {
+  background: none;
+  border: none;
+  color: #667eea;
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 0.25rem;
+}
+
+.salary-by-job-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.salary-by-job-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: rgba(102, 126, 234, 0.05);
+  border-radius: 6px;
+  border-left: 3px solid rgba(102, 126, 234, 0.3);
+}
+
+.salary-job-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.salary-job-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
+}
+
+.salary-job-value {
+  font-size: 0.875rem;
   font-weight: 700;
   color: #10b981;
 }
