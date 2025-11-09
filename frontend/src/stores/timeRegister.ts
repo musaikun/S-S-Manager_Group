@@ -8,7 +8,9 @@ import type {
   BulkApplyType,
   BulkApplyTarget,
   TimePickerMode,
-  TimeString
+  TimeString,
+  ConflictInfo,
+  TimeOverlap
 } from '../types/timeRegister'
 import type { DateString, DateJobMap, JobId } from '../types/calendar'
 
@@ -134,6 +136,68 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
       })
 
       return grouped
+    },
+
+    /**
+     * 時間重複を検出
+     * 同じ日付で異なるjobId間で時間が重複しているものをリストアップ
+     * パフォーマンス: 日付でグループ化してから比較するため、O(N)の計算量
+     */
+    timeConflicts: (state): ConflictInfo[] => {
+      const conflicts: ConflictInfo[] = []
+
+      // 削除されていないWorkDayのみを対象
+      const activeWorkDays = state.workDays.filter(day => !day.isRemoved)
+
+      // 日付でグループ化 - O(N)
+      const workDaysByDate: Record<DateString, WorkDay[]> = {}
+      activeWorkDays.forEach(day => {
+        if (!workDaysByDate[day.date]) {
+          workDaysByDate[day.date] = []
+        }
+        workDaysByDate[day.date].push(day)
+      })
+
+      // 各日付内で異なるjobId同士を比較 - O(M²) where M = 1日あたりのWorkDay数（通常は少ない）
+      Object.entries(workDaysByDate).forEach(([date, workDays]) => {
+        // 1日に1つのjobしかない場合はスキップ
+        if (workDays.length < 2) {
+          return
+        }
+
+        // 同じ日付内のWorkDay同士を比較
+        for (let i = 0; i < workDays.length; i++) {
+          for (let j = i + 1; j < workDays.length; j++) {
+            const workDay1 = workDays[i]
+            const workDay2 = workDays[j]
+
+            // 配列要素の存在とjobIdのチェック
+            if (!workDay1 || !workDay2 || !workDay1.jobId || !workDay2.jobId) {
+              continue
+            }
+
+            const overlap = checkTimeOverlap(workDay1, workDay2)
+            if (overlap) {
+              conflicts.push({
+                date,
+                jobId1: workDay1.jobId,
+                jobId2: workDay2.jobId,
+                job1TimeSlot: {
+                  startTime: workDay1.startTime,
+                  endTime: workDay1.endTime
+                },
+                job2TimeSlot: {
+                  startTime: workDay2.startTime,
+                  endTime: workDay2.endTime
+                },
+                overlap
+              })
+            }
+          }
+        }
+      })
+
+      return conflicts
     }
   },
 
@@ -573,4 +637,58 @@ function getWeekNumber(dateString: string): number {
   const weekNumber = Math.floor(diffDays / 7) + 1
 
   return weekNumber
+}
+
+/**
+ * 時刻文字列を0:00からの経過分に変換
+ * 翌日にまたがる場合は24時間以上の値になる
+ */
+function timeStringToMinutes(timeString: TimeString, isEndTime: boolean = false, startMinutes?: number): number {
+  const [hour, minute] = timeString.split(':').map(Number)
+  let minutes = hour * 60 + minute
+
+  // 終了時刻の場合、開始時刻より前なら翌日とみなす
+  if (isEndTime && startMinutes !== undefined && minutes <= startMinutes) {
+    minutes += 24 * 60
+  }
+
+  return minutes
+}
+
+/**
+ * 2つのWorkDayの時間が重複しているかチェック
+ * 境界の一致も重複とみなす（例: 9:00-17:00 と 17:00-22:00 は重複）
+ */
+function checkTimeOverlap(workDay1: WorkDay, workDay2: WorkDay): TimeOverlap | null {
+  // 削除されたWorkDayは除外
+  if (workDay1.isRemoved || workDay2.isRemoved) {
+    return null
+  }
+
+  // 異なるjobIdのみチェック（同じjobIdは重複としない）
+  if (workDay1.jobId === workDay2.jobId) {
+    return null
+  }
+
+  // 時刻を分単位に変換
+  const start1 = timeStringToMinutes(workDay1.startTime)
+  const end1 = timeStringToMinutes(workDay1.endTime, true, start1)
+  const start2 = timeStringToMinutes(workDay2.startTime)
+  const end2 = timeStringToMinutes(workDay2.endTime, true, start2)
+
+  // 重複チェック（境界の一致も含む: <= を使用）
+  if (start1 < end2 && start2 < end1) {
+    // 重複している時間帯を計算
+    const overlapStart = Math.max(start1, start2)
+    const overlapEnd = Math.min(end1, end2)
+    const durationMinutes = overlapEnd - overlapStart
+
+    return {
+      startMinutes: overlapStart,
+      endMinutes: overlapEnd,
+      durationMinutes
+    }
+  }
+
+  return null
 }

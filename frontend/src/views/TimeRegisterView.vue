@@ -118,6 +118,14 @@
         <div v-if="group.job" class="job-group-header" :style="{ borderLeftColor: group.job.color }">
           <span class="job-color-indicator" :style="{ backgroundColor: group.job.color }"></span>
           <span class="job-name">{{ group.job.name }}</span>
+          <button
+            v-if="jobHasConflicts(group.job.id)"
+            @click="openConflictModal(group.job.id)"
+            class="conflict-warning-btn"
+            title="時間重複あり - クリックして詳細を表示"
+          >
+            ⚠️
+          </button>
         </div>
         <div v-else class="job-group-header no-job">
           <span class="job-name">掛け持ちなし</span>
@@ -134,7 +142,8 @@
               getBorderClass(workDay),
               {
                 removed: workDay.isRemoved,
-                highlighted: isHighlighted(workDay)
+                highlighted: isHighlighted(workDay),
+                conflict: hasConflict(workDay)
               }
             ]"
           >
@@ -298,6 +307,50 @@
       </div>
     </Teleport>
 
+    <!-- 時間重複詳細モーダル -->
+    <Teleport to="body">
+      <div v-if="showConflictModal && selectedJobForConflict" class="modal-overlay" @click="closeConflictModal" @touchmove.prevent>
+        <div class="modal-content conflict-modal" @click.stop>
+          <h3 class="modal-title">⚠️ 時間重複の詳細</h3>
+          <div class="conflict-content">
+            <div class="conflict-job-info">
+              <span class="conflict-job-label">対象:</span>
+              <span class="conflict-job-name">{{ calendarStore.getJobById(selectedJobForConflict)?.name }}</span>
+            </div>
+
+            <div class="conflict-list">
+              <div
+                v-for="(conflict, index) in getConflictsForJob(selectedJobForConflict)"
+                :key="index"
+                class="conflict-item"
+              >
+                <div class="conflict-date">{{ conflict.date }}</div>
+                <div class="conflict-details">
+                  <div class="conflict-job-row">
+                    <span class="job-badge" :style="{ backgroundColor: calendarStore.getJobById(conflict.jobId1)?.color }">
+                      {{ calendarStore.getJobById(conflict.jobId1)?.name }}
+                    </span>
+                    <span class="time-range">{{ conflict.job1TimeSlot.startTime }} 〜 {{ conflict.job1TimeSlot.endTime }}</span>
+                  </div>
+                  <div class="conflict-overlap-indicator">
+                    <span class="overlap-icon">⚠️</span>
+                    <span class="overlap-text">重複時間: {{ formatOverlapTime(conflict.overlap) }}</span>
+                  </div>
+                  <div class="conflict-job-row">
+                    <span class="job-badge" :style="{ backgroundColor: calendarStore.getJobById(conflict.jobId2)?.color }">
+                      {{ calendarStore.getJobById(conflict.jobId2)?.name }}
+                    </span>
+                    <span class="time-range">{{ conflict.job2TimeSlot.startTime }} 〜 {{ conflict.job2TimeSlot.endTime }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button @click="closeConflictModal" class="close-btn">閉じる</button>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- 時刻選択モーダル（Teleportでbody直下に配置） -->
     <Teleport to="body">
       <div v-if="showTimeModal" class="modal-overlay" @click="cancelTimeEdit" @touchmove.prevent>
@@ -442,7 +495,8 @@ import { useTimeRegisterStore } from '../stores/timeRegister'
 import { useTimeFormat } from '../composables/useTimeFormat'
 import { useTimeCalculation } from '../composables/useTimeCalculation'
 import { useHolidays } from '../composables/useHolidays'
-import type { BulkApplyType, WorkDay } from '../types/timeRegister'
+import type { BulkApplyType, WorkDay, ConflictInfo, TimeOverlap } from '../types/timeRegister'
+import type { JobId } from '../types/calendar'
 
 const route = useRoute()
 const calendarStore = useCalendarStore()
@@ -451,6 +505,9 @@ const { isHoliday } = useHolidays()
 
 const { bulkSettings, includeBreak, workDays } = storeToRefs(timeRegisterStore)
 const { totalSummary } = storeToRefs(timeRegisterStore)
+
+// 重複情報をストアから取得
+const timeConflicts = computed(() => timeRegisterStore.timeConflicts)
 
 const { formatMinutesToHours } = useTimeFormat()
 const { calculateBreakTime, getWeeksInMonth } = useTimeCalculation()
@@ -514,12 +571,16 @@ const confirmModalData = ref({
 // ヘルプモーダルの状態
 const showHelpModal = ref(false)
 
+// 重複詳細モーダルの状態
+const showConflictModal = ref(false)
+const selectedJobForConflict = ref<JobId | null>(null)
+
 // 給与計算の状態
 const hourlyWage = ref<number>(1000) // 時給（デフォルト1000円）
 const calculatedSalary = ref<number>(0)
 
 // モーダル状態をPageSliderに提供（スライド制御用）
-provide('isModalOpen', computed(() => showTimeModal.value || showConfirmModal.value || showHelpModal.value))
+provide('isModalOpen', computed(() => showTimeModal.value || showConfirmModal.value || showHelpModal.value || showConflictModal.value))
 
 // アクティブな勤務日（削除されていない）
 const activeWorkDays = computed(() => {
@@ -566,6 +627,62 @@ const isHighlighted = (workDay: WorkDay) => {
   const weekdayMatch = selectedWeekdays.value.length === 0 || selectedWeekdays.value.includes(workDay.dayOfWeek)
 
   return weekMatch && weekdayMatch
+}
+
+// 特定のWorkDayに時間重複があるかチェック
+const hasConflict = (workDay: WorkDay): boolean => {
+  if (!workDay.jobId) return false
+
+  return timeConflicts.value.some(conflict =>
+    conflict.date === workDay.date &&
+    (conflict.jobId1 === workDay.jobId || conflict.jobId2 === workDay.jobId)
+  )
+}
+
+// 特定のジョブに重複があるかチェック
+const jobHasConflicts = (jobId: JobId | undefined): boolean => {
+  if (!jobId) return false
+
+  return timeConflicts.value.some(conflict =>
+    conflict.jobId1 === jobId || conflict.jobId2 === jobId
+  )
+}
+
+// 特定のジョブに関連する重複情報を取得
+const getConflictsForJob = (jobId: JobId | undefined): ConflictInfo[] => {
+  if (!jobId) return []
+
+  return timeConflicts.value.filter(conflict =>
+    conflict.jobId1 === jobId || conflict.jobId2 === jobId
+  )
+}
+
+// 重複詳細モーダルを開く
+const openConflictModal = (jobId: JobId) => {
+  selectedJobForConflict.value = jobId
+  showConflictModal.value = true
+}
+
+// 重複詳細モーダルを閉じる
+const closeConflictModal = () => {
+  showConflictModal.value = false
+  selectedJobForConflict.value = null
+}
+
+// 重複時間を分から時刻形式に変換（例: 540分 → "9:00"）
+const minutesToTimeString = (minutes: number): string => {
+  const adjustedMinutes = minutes % (24 * 60) // 24時間以内に正規化
+  const hours = Math.floor(adjustedMinutes / 60)
+  const mins = adjustedMinutes % 60
+  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`
+}
+
+// 重複時間をフォーマット
+const formatOverlapTime = (overlap: TimeOverlap): string => {
+  const startTime = minutesToTimeString(overlap.startMinutes)
+  const endTime = minutesToTimeString(overlap.endMinutes)
+  const duration = formatMinutesToHours(overlap.durationMinutes)
+  return `${startTime} 〜 ${endTime} (${duration})`
 }
 
 // 開始時間ボタン配列（午前: 0-11、午後: 12-23）
@@ -1604,6 +1721,32 @@ const confirmTimeEdit = () => {
   color: #333;
 }
 
+.conflict-warning-btn {
+  margin-left: auto;
+  background: rgba(255, 69, 0, 0.1);
+  border: 2px solid rgba(255, 69, 0, 0.4);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.conflict-warning-btn:hover {
+  background: rgba(255, 69, 0, 0.2);
+  border-color: rgba(255, 69, 0, 0.6);
+  transform: scale(1.1);
+}
+
+.conflict-warning-btn:active {
+  transform: scale(0.95);
+}
+
 /* 勤務日カードリスト */
 .work-days-list {
   display: flex;
@@ -1769,6 +1912,21 @@ const confirmTimeEdit = () => {
 .work-day-card.highlighted {
   border: 3px solid #00ff00;
   border-left-width: 4px !important;
+}
+
+/* 重複時の赤枠（蛍光色） */
+.work-day-card.conflict {
+  border: 3px solid #ff0000;
+  border-left-width: 4px !important;
+  box-shadow: 0 0 12px rgba(255, 0, 0, 0.5),
+              0 4px 8px rgba(0, 0, 0, 0.15);
+  background: rgba(255, 0, 0, 0.05);
+}
+
+.work-day-card.conflict:hover {
+  box-shadow: 0 0 16px rgba(255, 0, 0, 0.6),
+              0 6px 12px rgba(0, 0, 0, 0.2);
+  border-color: #ff0000;
 }
 
 /* 時刻テキストの色 */
@@ -2195,6 +2353,119 @@ const confirmTimeEdit = () => {
   font-size: 0.75rem;
   color: #555;
   line-height: 1.5;
+}
+
+/* 重複詳細モーダル */
+.conflict-modal {
+  max-width: 500px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.conflict-content {
+  margin-bottom: 1.5rem;
+}
+
+.conflict-job-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, rgba(255, 69, 0, 0.1), rgba(255, 140, 0, 0.1));
+  border-radius: 8px;
+  border-left: 4px solid #ff4500;
+}
+
+.conflict-job-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #666;
+}
+
+.conflict-job-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.conflict-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.conflict-item {
+  padding: 1rem;
+  background: white;
+  border: 2px solid rgba(255, 69, 0, 0.3);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(255, 69, 0, 0.1);
+}
+
+.conflict-date {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #ff4500;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 69, 0, 0.2);
+}
+
+.conflict-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.conflict-job-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  background: rgba(102, 126, 234, 0.05);
+  border-radius: 6px;
+}
+
+.job-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #333;
+  min-width: 100px;
+  text-align: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.time-range {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #555;
+  font-family: 'Courier New', monospace;
+}
+
+.conflict-overlap-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(255, 69, 0, 0.1);
+  border-radius: 6px;
+  margin: 0.25rem 0;
+}
+
+.overlap-icon {
+  font-size: 1.2rem;
+}
+
+.overlap-text {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #ff4500;
 }
 
 .close-btn {
