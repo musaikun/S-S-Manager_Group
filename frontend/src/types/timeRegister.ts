@@ -57,6 +57,8 @@ export interface WorkDay {
   endTimeSetBy: 'default' | 'bulk' | 'custom' | 'base'
   /** ジョブID（掛け持ち機能使用時） */
   jobId?: JobId
+  /** ジョブ名（保存時点の掛け持ち先名称を保持） */
+  jobName?: string
 }
 
 /**

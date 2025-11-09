@@ -275,6 +275,36 @@ const createFromBase = () => {
   const currentYear = calendarStore.currentYear
   const currentMonth = calendarStore.currentMonth
 
+  // 掛け持ち先名称の変更を検出
+  const changedJobs: Array<{ oldName: string; newName: string }> = []
+  selectedShift.value.workDays.forEach(savedDay => {
+    if (savedDay.jobId !== undefined && savedDay.jobName) {
+      const currentJob = calendarStore.getJobById(savedDay.jobId)
+      if (currentJob && currentJob.name !== savedDay.jobName) {
+        // 既に同じ組み合わせが存在しないか確認（重複を避ける）
+        const exists = changedJobs.some(
+          item => item.oldName === savedDay.jobName && item.newName === currentJob.name
+        )
+        if (!exists) {
+          changedJobs.push({ oldName: savedDay.jobName, newName: currentJob.name })
+        }
+      }
+    }
+  })
+
+  // 掛け持ち先名称が変更されている場合、確認ダイアログを表示
+  if (changedJobs.length > 0) {
+    let message = '以下の掛け持ち先の名称が変更されています：\n\n'
+    changedJobs.forEach(job => {
+      message += `・保存時: ${job.oldName} → 現在: ${job.newName}\n`
+    })
+    message += '\n現在の設定で復元しますがよろしいですか？'
+
+    if (!confirm(message)) {
+      return
+    }
+  }
+
   // 確認ダイアログを表示（キャンセル時は何もしない）
   const monthLabel = `${currentYear}年${currentMonth + 1}月`
   if (!confirm(`現在選択中の${monthLabel}に作成しますがよろしいですか？`)) {

@@ -380,6 +380,9 @@ const confirmClear = () => {
   store.selectedDates.clear()
   store.dateJobMap = {}
 
+  // LocalStorageに保存（画面遷移時に古いデータが復活しないようにするため）
+  store.saveJobsToLocalStorage()
+
   // 時間登録の状態もクリア
   timeRegisterStore.workDays = []
   timeRegisterStore.remarks = ''

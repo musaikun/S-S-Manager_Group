@@ -402,8 +402,24 @@ const getStatusBadgeClass = (workDay: WorkDay) => {
 
 // シフトデータをLocalStorageに保存
 const saveShiftData = () => {
+  // 各workDayにjobNameを追加（保存時点の掛け持ち先名称を保持）
+  const workDaysWithJobName = workDaysForSubmit.value.map(workDay => {
+    if (workDay.jobId !== undefined) {
+      const job = calendarStore.getJobById(workDay.jobId)
+      return {
+        ...workDay,
+        jobName: job?.name || ''
+      }
+    } else {
+      return {
+        ...workDay,
+        jobName: calendarStore.mainStoreDisplayName
+      }
+    }
+  })
+
   const shiftData = {
-    workDays: workDaysForSubmit.value,
+    workDays: workDaysWithJobName,
     totalSummary: totalSummary.value,
     remarks: timeRegisterStore.remarks,
     submittedAt: new Date().toISOString(),
