@@ -350,18 +350,40 @@ const createFromBase = () => {
     }
   })
 
-  // カレンダーに日付を選択（掛け持ち情報も含めて）
-  datesToSelect.forEach(date => {
-    calendarStore.selectDate(date)
+  // メイン選択の日付を特定（掛け持ち情報がないor元々メインで選択されていた日付）
+  const mainDates = new Set<DateString>()
+  selectedShift.value!.workDays.forEach(workDay => {
+    if (workDay.jobId === undefined) {
+      // 過去の日付は除外して対応する未来の日付を追加
+      const date = new Date(workDay.date)
+      const dayOfWeek = date.getDay()
+      const weekNumber = workDay.weekNumber
 
-    // 掛け持ち情報をdateJobMapに設定
-    if (dateJobMap[date]) {
-      calendarStore.dateJobMap[date] = dateJobMap[date]
+      // 現在表示中の月で同じ曜日・週番号の日付を探す
+      for (let day = 1; day <= 31; day++) {
+        const targetDate = new Date(currentYear, currentMonth, day)
+        if (targetDate.getMonth() !== currentMonth) break
+
+        const dateString = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+        if (targetDate.getDay() === dayOfWeek && datesToSelect.includes(dateString)) {
+          mainDates.add(dateString)
+        }
+      }
     }
   })
 
+  // メイン選択のみをselectedDatesに追加
+  mainDates.forEach(date => {
+    calendarStore.selectDate(date)
+  })
+
+  // 掛け持ち情報をdateJobMapに設定
+  Object.keys(dateJobMap).forEach(date => {
+    calendarStore.dateJobMap[date] = dateJobMap[date]
+  })
+
   // 選択された日付でworkDaysを初期化（掛け持ち情報を含む）
-  timeRegisterStore.initializeFromDates(datesToSelect, calendarStore.dateJobMap)
+  timeRegisterStore.initializeFromDates(datesToSelect, calendarStore.dateJobMap, mainDates)
 
   // 保存されたシフトの時間を適用
   timeRegisterStore.workDays.forEach((workDay, index) => {

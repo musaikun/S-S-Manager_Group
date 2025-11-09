@@ -242,7 +242,7 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
     /**
      * カレンダーから選択された日付を設定
      */
-    initializeFromDates(dates: DateString[], dateJobMap: DateJobMap = {}) {
+    initializeFromDates(dates: DateString[], dateJobMap: DateJobMap = {}, selectedDates: Set<DateString> = new Set()) {
       // デフォルト時刻を取得（一括設定ではなく、常にヘッダー設定の時刻を使用）
       const defaultTimes = loadDefaultTimes()
 
@@ -251,9 +251,15 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
 
       dates.forEach(date => {
         const jobIds = dateJobMap[date] || []
+        const allJobIds: (JobId | undefined)[] = []
 
-        // メイン(undefined) + 掛け持ち先のjobIdsを結合
-        const allJobIds: (JobId | undefined)[] = [undefined as any, ...jobIds]
+        // selectedDatesに含まれている場合のみメインを追加
+        if (selectedDates.has(date)) {
+          allJobIds.push(undefined)
+        }
+
+        // 掛け持ち先を追加
+        allJobIds.push(...jobIds)
 
         allJobIds.forEach(jobId => {
           const dateObj = new Date(date)
@@ -298,7 +304,7 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
     /**
      * カレンダーの選択状態と同期（個別設定を保持）
      */
-    syncWithSelectedDates(dates: DateString[], dateJobMap: DateJobMap = {}) {
+    syncWithSelectedDates(dates: DateString[], dateJobMap: DateJobMap = {}, selectedDates: Set<DateString> = new Set()) {
       // デフォルト時刻を取得（一括設定ではなく、常にヘッダー設定の時刻を使用）
       const defaultTimes = loadDefaultTimes()
 
@@ -311,9 +317,15 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
 
       dates.forEach(date => {
         const jobIds = dateJobMap[date] || []
+        const allJobIds: (JobId | undefined)[] = []
 
-        // メイン(undefined) + 掛け持ち先のjobIdsを結合
-        const allJobIds: (JobId | undefined)[] = [undefined as any, ...jobIds]
+        // selectedDatesに含まれている場合のみメインを追加
+        if (selectedDates.has(date)) {
+          allJobIds.push(undefined)
+        }
+
+        // 掛け持ち先を追加
+        allJobIds.push(...jobIds)
 
         allJobIds.forEach(jobId => {
           const key = `${date}_${jobId || 'none'}`

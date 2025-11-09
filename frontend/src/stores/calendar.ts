@@ -165,8 +165,8 @@ export const useCalendarStore = defineStore('calendar', {
           }
         } else {
           // 選択されていない場合は追加（新しい配列を作成）
+          // 掛け持ちモードでは selectedDates には追加しない
           this.dateJobMap[dateString] = [...currentJobIds, this.currentJobId]
-          this.selectedDates.add(dateString)
         }
       }
 
@@ -220,7 +220,7 @@ export const useCalendarStore = defineStore('calendar', {
               jobIds.splice(index, 1)
               if (jobIds.length === 0) {
                 delete this.dateJobMap[date]
-                this.selectedDates.delete(date)
+                // 掛け持ちモードでは selectedDates は触らない
               } else {
                 this.dateJobMap[date] = jobIds
               }
@@ -231,13 +231,8 @@ export const useCalendarStore = defineStore('calendar', {
           dates.forEach(date => {
             const jobIds = this.dateJobMap[date] || []
             if (!jobIds.includes(this.currentJobId!)) {
-              if (jobIds.length === 0) {
-                this.dateJobMap[date] = [this.currentJobId!]
-                this.selectedDates.add(date)
-              } else {
-                jobIds.push(this.currentJobId!)
-                this.dateJobMap[date] = jobIds
-              }
+              // 掛け持ちモードでは selectedDates には追加しない
+              this.dateJobMap[date] = [...jobIds, this.currentJobId!]
             }
           })
         }
@@ -260,7 +255,7 @@ export const useCalendarStore = defineStore('calendar', {
             jobIds.splice(index, 1)
             if (jobIds.length === 0) {
               delete this.dateJobMap[dateString]
-              this.selectedDates.delete(dateString)
+              // 掛け持ちモードでは selectedDates は触らない
             }
           }
         })
@@ -305,7 +300,7 @@ export const useCalendarStore = defineStore('calendar', {
               jobIds.splice(index, 1)
               if (jobIds.length === 0) {
                 delete this.dateJobMap[date]
-                this.selectedDates.delete(date)
+                // 掛け持ちモードでは selectedDates は触らない
               } else {
                 this.dateJobMap[date] = jobIds
               }
@@ -316,13 +311,8 @@ export const useCalendarStore = defineStore('calendar', {
           targetDates.forEach(date => {
             const jobIds = this.dateJobMap[date] || []
             if (!jobIds.includes(this.currentJobId!)) {
-              if (jobIds.length === 0) {
-                this.dateJobMap[date] = [this.currentJobId!]
-                this.selectedDates.add(date)
-              } else {
-                jobIds.push(this.currentJobId!)
-                this.dateJobMap[date] = jobIds
-              }
+              // 掛け持ちモードでは selectedDates には追加しない
+              this.dateJobMap[date] = [...jobIds, this.currentJobId!]
             }
           })
         }

@@ -564,10 +564,18 @@ const copyToClipboard = async () => {
 const initializeWorkDaysIfNeeded = () => {
   const selectedDates = Array.from(calendarStore.selectedDates)
   const dateJobMap = calendarStore.dateJobMap
+  const selectedDatesSet = calendarStore.selectedDates
+
+  // すべての日付を統合（メイン選択 + 掛け持ち選択）
+  const allDates = new Set([
+    ...selectedDates,
+    ...Object.keys(dateJobMap)
+  ])
+  const allDatesArray = Array.from(allDates).sort()
 
   // workDaysが空で、カレンダーで日付が選択されている場合は初期化
-  if (timeRegisterStore.workDays.length === 0 && selectedDates.length > 0) {
-    timeRegisterStore.initializeFromDates(selectedDates, dateJobMap)
+  if (timeRegisterStore.workDays.length === 0 && allDatesArray.length > 0) {
+    timeRegisterStore.initializeFromDates(allDatesArray, dateJobMap, selectedDatesSet)
   }
 }
 

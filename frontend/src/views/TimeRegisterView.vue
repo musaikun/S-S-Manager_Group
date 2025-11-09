@@ -949,8 +949,16 @@ watch(endPm, (isPm) => {
 const initializeWorkDays = () => {
   const selectedDates = calendarStore.selectedDatesArray
   const dateJobMap = calendarStore.dateJobMap
+  const selectedDatesSet = calendarStore.selectedDates
 
-  if (selectedDates.length === 0) {
+  // すべての日付を統合（メイン選択 + 掛け持ち選択）
+  const allDates = new Set([
+    ...selectedDates,
+    ...Object.keys(dateJobMap)
+  ])
+  const allDatesArray = Array.from(allDates).sort()
+
+  if (allDatesArray.length === 0) {
     // 選択がなくなった場合はクリア
     timeRegisterStore.workDays = []
     return
@@ -958,9 +966,9 @@ const initializeWorkDays = () => {
 
   // workDaysが空の場合は初期化、そうでなければ同期
   if (timeRegisterStore.workDays.length === 0) {
-    timeRegisterStore.initializeFromDates(selectedDates, dateJobMap)
+    timeRegisterStore.initializeFromDates(allDatesArray, dateJobMap, selectedDatesSet)
   } else {
-    timeRegisterStore.syncWithSelectedDates(selectedDates, dateJobMap)
+    timeRegisterStore.syncWithSelectedDates(allDatesArray, dateJobMap, selectedDatesSet)
   }
 }
 
