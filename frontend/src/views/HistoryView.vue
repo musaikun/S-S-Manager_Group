@@ -74,14 +74,25 @@
             <!-- シフト詳細 -->
             <div class="detail-section">
               <h3 class="section-title">シフト詳細</h3>
-              <div class="shift-detail-list">
-                <div
-                  v-for="day in selectedShift.workDays"
-                  :key="day.date"
-                  class="shift-detail-item"
-                >
-                  <span class="shift-date">{{ day.displayDate }}</span>
-                  <span class="shift-time">{{ day.startTime }}〜{{ day.endTime }}</span>
+              <div v-for="(group, groupIndex) in workDaysByJob" :key="groupIndex" class="job-group">
+                <!-- ジョブヘッダー -->
+                <div v-if="group.job" class="job-group-header" :style="{ borderLeftColor: group.job.color }">
+                  <span class="job-color-indicator" :style="{ backgroundColor: group.job.color }"></span>
+                  <span class="job-name">{{ group.job.name }}</span>
+                </div>
+                <div v-else class="job-group-header no-job">
+                  <span class="job-name">{{ calendarStore.mainStoreDisplayName }}</span>
+                </div>
+
+                <div class="shift-detail-list">
+                  <div
+                    v-for="day in group.workDays"
+                    :key="`${day.date}_${day.jobId || 'none'}`"
+                    class="shift-detail-item"
+                  >
+                    <span class="shift-date">{{ day.displayDate }}</span>
+                    <span class="shift-time">{{ day.startTime }}〜{{ day.endTime }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -148,7 +159,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTimeFormat } from '../composables/useTimeFormat'
 
@@ -173,6 +184,30 @@ const savedShifts = ref<SavedShift[]>([])
 const selectedShift = ref<SavedShift | null>(null)
 const selectedIndex = ref<number>(-1)
 const showShareModal = ref<boolean>(false)
+
+// シフト詳細をjobIdでグループ化
+const workDaysByJob = computed(() => {
+  if (!selectedShift.value) return []
+
+  const grouped: Record<string, { job: any; workDays: any[] }> = {}
+
+  selectedShift.value.workDays.forEach((day) => {
+    const jobId = day.jobId
+    const key = jobId?.toString() || 'none'
+
+    if (!grouped[key]) {
+      const job = jobId ? calendarStore.getJobById(jobId) : null
+      grouped[key] = {
+        job,
+        workDays: []
+      }
+    }
+
+    grouped[key].workDays.push(day)
+  })
+
+  return Object.values(grouped)
+})
 
 const handleBack = () => {
   router.push('/calendar')
@@ -254,10 +289,21 @@ const createFromBase = () => {
 
   // 保存されたシフトの各勤務日について、同じ曜日・週番号の日付を見つける
   const datesToSelect: string[] = []
+  const dateJobMap: Record<string, number[]> = {} // 日付 -> jobId[] のマッピング
 
   selectedShift.value.workDays.forEach(savedDay => {
     const targetDayOfWeek = savedDay.dayOfWeek
     const targetWeekNumber = savedDay.weekNumber
+    const savedJobId = savedDay.jobId
+
+    // 掛け持ち先が削除されていないか確認
+    if (savedJobId !== undefined) {
+      const jobExists = calendarStore.getJobById(savedJobId)
+      if (!jobExists) {
+        // 掛け持ち先が削除されている場合はスキップ
+        return
+      }
+    }
 
     // 現在の月の全ての日付をチェック
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
@@ -286,27 +332,45 @@ const createFromBase = () => {
         const today = new Date()
         today.setHours(0, 0, 0, 0)
         if (date >= today) {
-          datesToSelect.push(dateString)
+          if (!datesToSelect.includes(dateString)) {
+            datesToSelect.push(dateString)
+          }
+
+          // 掛け持ち情報を保持
+          if (savedJobId !== undefined) {
+            if (!dateJobMap[dateString]) {
+              dateJobMap[dateString] = []
+            }
+            if (!dateJobMap[dateString].includes(savedJobId)) {
+              dateJobMap[dateString].push(savedJobId)
+            }
+          }
         }
       }
     }
   })
 
-  // カレンダーに日付を選択
+  // カレンダーに日付を選択（掛け持ち情報も含めて）
   datesToSelect.forEach(date => {
     calendarStore.selectDate(date)
+
+    // 掛け持ち情報をdateJobMapに設定
+    if (dateJobMap[date]) {
+      calendarStore.dateJobMap[date] = dateJobMap[date]
+    }
   })
 
-  // 選択された日付でworkDaysを初期化
-  timeRegisterStore.initializeFromDates(datesToSelect)
+  // 選択された日付でworkDaysを初期化（掛け持ち情報を含む）
+  timeRegisterStore.initializeFromDates(datesToSelect, calendarStore.dateJobMap)
 
   // 保存されたシフトの時間を適用
   timeRegisterStore.workDays.forEach((workDay, index) => {
-    // 同じ曜日・週番号の保存されたシフトを探す
+    // 同じ曜日・週番号・jobIdの保存されたシフトを探す
     const matchedSavedDay = selectedShift.value!.workDays.find(
       savedDay =>
         savedDay.dayOfWeek === workDay.dayOfWeek &&
-        savedDay.weekNumber === workDay.weekNumber
+        savedDay.weekNumber === workDay.weekNumber &&
+        savedDay.jobId === workDay.jobId
     )
 
     if (matchedSavedDay) {
@@ -680,6 +744,40 @@ onMounted(() => {
 .detail-value {
   font-size: 0.875rem;
   font-weight: 600;
+  color: #333;
+}
+
+.job-group {
+  margin-bottom: 1rem;
+}
+
+.job-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  border-radius: 6px;
+  border-left: 3px solid;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.job-group-header.no-job {
+  border-left-color: #9ca3af;
+  background: linear-gradient(135deg, rgba(156, 163, 175, 0.1), rgba(209, 213, 219, 0.1));
+}
+
+.job-color-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
+}
+
+.job-name {
+  font-size: 0.9rem;
   color: #333;
 }
 

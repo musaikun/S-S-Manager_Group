@@ -137,6 +137,22 @@ export interface TotalSummary {
 }
 
 /**
+ * ジョブごとの合計情報
+ */
+export interface JobSummary {
+  /** ジョブID */
+  jobId: JobId | undefined
+  /** 出勤日数 */
+  workDays: number
+  /** 合計勤務時間（分） */
+  totalWorkMinutes: number
+  /** 合計実労働時間（分）- 休憩を引いた時間 */
+  totalActualWorkMinutes: number
+  /** 合計休憩時間（分） */
+  totalBreakMinutes: number
+}
+
+/**
  * 時間登録画面の状態
  */
 export interface TimeRegisterState {
@@ -210,4 +226,34 @@ export interface ProgressStepInfo {
   active: boolean
   /** クリック可能か */
   clickable: boolean
+}
+
+/**
+ * 時間重複の情報
+ */
+export interface TimeOverlap {
+  /** 重複開始時刻（分単位、0:00からの経過分） */
+  startMinutes: number
+  /** 重複終了時刻（分単位、0:00からの経過分） */
+  endMinutes: number
+  /** 重複時間（分） */
+  durationMinutes: number
+}
+
+/**
+ * 時間重複の詳細情報
+ */
+export interface ConflictInfo {
+  /** 対象日付 */
+  date: DateString
+  /** 重複しているジョブID（1つ目） */
+  jobId1: JobId
+  /** 重複しているジョブID（2つ目） */
+  jobId2: JobId
+  /** ジョブ1の時間帯 */
+  job1TimeSlot: TimeSlot
+  /** ジョブ2の時間帯 */
+  job2TimeSlot: TimeSlot
+  /** 重複している時間帯 */
+  overlap: TimeOverlap
 }

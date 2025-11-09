@@ -42,6 +42,16 @@
             </button>
             <p class="settings-note">※ ⭐お気に入りは残ります</p>
           </div>
+
+          <!-- キャッシュ管理 -->
+          <div class="settings-section">
+            <h3 class="section-title">キャッシュ管理</h3>
+            <button @click="clearCache" class="action-btn clear-cache-btn">
+              <span class="action-icon">🔄</span>
+              <span class="action-label">全てのキャッシュをクリア</span>
+            </button>
+            <p class="settings-note">※ 掛け持ち設定、過去のシフト、デフォルト時刻などが削除されます</p>
+          </div>
         </div>
       </div>
     </div>
@@ -318,6 +328,20 @@ const deleteNonFavorites = () => {
   alert(`${savedShifts.length - favorites.length}件の履歴を削除しました`)
 }
 
+const clearCache = () => {
+  if (!confirm('全てのキャッシュをクリアしてもよろしいですか？\n\n以下のデータが削除されます：\n・掛け持ち設定\n・過去のシフト\n・デフォルト時刻\n・その他の設定')) {
+    return
+  }
+
+  // LocalStorageをクリア
+  localStorage.clear()
+
+  alert('全てのキャッシュをクリアしました。\nページをリロードします。')
+
+  // ページをリロード
+  window.location.reload()
+}
+
 // 午前/午後切り替え時に時間を調整
 watch(startPm, (newIsPm) => {
   if (newIsPm && selectedStartHour.value < 12) {
@@ -493,6 +517,16 @@ watch(endPm, (newIsPm) => {
 .action-btn:hover {
   border-color: #ef4444;
   background: #fef2f2;
+}
+
+.clear-cache-btn {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.clear-cache-btn:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
 }
 
 .action-icon {

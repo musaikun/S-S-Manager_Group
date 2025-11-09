@@ -99,6 +99,8 @@ export interface CalendarState {
   dateJobMap: DateJobMap
   /** ジョブ一覧（最大4つ） */
   jobs: Job[]
-  /** 現在選択中のジョブID（null = 掛け持ちなし） */
+  /** 現在選択中のジョブID（null = 本店） */
   currentJobId: JobId | null
+  /** 本店名 */
+  mainStoreName: string
 }
