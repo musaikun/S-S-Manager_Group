@@ -1,26 +1,28 @@
 <template>
   <div class="time-register-view">
-    <div class="time-register-container" :style="getContainerBorderStyle()">
-      <!-- 掛け持ち先選択バナー -->
-      <div v-if="selectedJobFilter !== null" class="job-filter-banner" :style="getJobFilterBannerStyle()">
-        <div class="banner-content">
-          <div class="banner-left">
-            <span class="banner-icon">🎯</span>
-            <span class="banner-text">{{ getJobFilterName() }}</span>
-          </div>
-          <div class="banner-right">
-            <button v-if="hasMultipleJobs" @click="openJobSwitchModal" class="banner-btn switch-btn">
-              切替
-            </button>
-            <button v-if="selectedJobFilter !== undefined" @click="clearJobFilter" class="banner-btn clear-btn">
-              解除
-            </button>
+    <div class="time-register-container">
+      <!-- 掛け持ち先フィルター適用時のラッパー -->
+      <div v-if="selectedJobFilter !== null" class="job-filter-wrapper" :style="getFilterWrapperBorderStyle()">
+        <!-- 掛け持ち先選択バナー -->
+        <div class="job-filter-banner" :style="getJobFilterBannerStyle()">
+          <div class="banner-content">
+            <div class="banner-left">
+              <span class="banner-icon">🎯</span>
+              <span class="banner-text">{{ getJobFilterName() }}</span>
+            </div>
+            <div class="banner-right">
+              <button v-if="hasMultipleJobs" @click="openJobSwitchModal" class="banner-btn switch-btn">
+                切替
+              </button>
+              <button @click="clearJobFilter" class="banner-btn clear-btn">
+                解除
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- 一括設定セクション（アコーディオン） -->
-      <div class="bulk-settings-section">
+        <!-- 一括設定セクション（アコーディオン） -->
+        <div class="bulk-settings-section">
         <div class="section-header accordion-header" @click="toggleBulkAccordion">
           <h2>一括設定</h2>
           <span class="accordion-icon">{{ isBulkAccordionOpen ? '▲' : '▼' }}</span>
@@ -34,6 +36,101 @@
 
             <!-- 掛け持ち先絞り込みボタン -->
             <div v-if="hasMultipleJobs && selectedJobFilter === null" class="job-filter-button-container">
+              <button @click="openJobSwitchModal" class="job-filter-button">
+                🎯 掛け持ち先で絞り込む
+              </button>
+            </div>
+
+            <div class="bulk-time-settings">
+              <div class="bulk-time-item">
+                <button @click="openBulkTimeModal('start')" class="bulk-time-btn">
+                  開始時刻設定
+                </button>
+                <div class="bulk-time-display" @click="openBulkTimeModal('start')">
+                  {{ bulkSettings.startTime }}
+                </div>
+              </div>
+              <div class="bulk-time-item">
+                <button @click="openBulkTimeModal('end')" class="bulk-time-btn">
+                  終了時刻設定
+                </button>
+                <div class="bulk-time-display" @click="openBulkTimeModal('end')">
+                  {{ bulkSettings.endTime }}
+                </div>
+              </div>
+            </div>
+
+            <!-- 週選択 -->
+            <div class="week-selector">
+              <div class="week-label">週を選択</div>
+              <div class="week-buttons">
+                <button
+                  v-for="week in 6"
+                  :key="week"
+                  @click="toggleWeek(week, $event)"
+                  class="week-btn"
+                  :class="{
+                    active: selectedWeeks.includes(week),
+                    disabled: !isWeekAvailable(week)
+                  }"
+                  :disabled="!isWeekAvailable(week)"
+                >
+                  第{{ week }}週
+                </button>
+              </div>
+            </div>
+
+            <!-- 曜日選択 -->
+            <div class="weekday-selector">
+              <div class="weekday-label">曜日を選択</div>
+              <div class="weekday-buttons">
+                <button
+                  v-for="day in weekdayOptions"
+                  :key="day.value"
+                  @click="toggleWeekday(day.value, $event)"
+                  class="weekday-btn"
+                  :class="{
+                    active: selectedWeekdays.includes(day.value),
+                    sunday: day.value === 0,
+                    saturday: day.value === 6
+                  }"
+                >
+                  {{ day.label }}
+                </button>
+              </div>
+            </div>
+
+            <div class="bulk-actions">
+              <button @click="handleBulkApplyAll('both')" class="bulk-btn bulk-btn-all">
+                {{ bulkApplyBothLabel }}
+              </button>
+              <button @click="handleBulkApplyAll('start')" class="bulk-btn bulk-btn-all">
+                {{ bulkApplyStartLabel }}
+              </button>
+              <button @click="handleBulkApplyAll('end')" class="bulk-btn bulk-btn-all">
+                {{ bulkApplyEndLabel }}
+              </button>
+            </div>
+
+            <!-- 説明テキスト -->
+            <div class="bulk-note">
+              ※週・曜日を選択すると該当カードがマークされます
+            </div>
+          </div>
+        </transition>
+        </div>
+      </div>
+
+      <!-- フィルター未選択時の一括設定 -->
+      <div v-else class="bulk-settings-section">
+        <div class="section-header accordion-header" @click="toggleBulkAccordion">
+          <h2>一括設定</h2>
+          <span class="accordion-icon">{{ isBulkAccordionOpen ? '▲' : '▼' }}</span>
+        </div>
+        <transition name="accordion">
+          <div v-show="isBulkAccordionOpen" class="bulk-settings-content">
+            <!-- 掛け持ち先絞り込みボタン -->
+            <div v-if="hasMultipleJobs" class="job-filter-button-container">
               <button @click="openJobSwitchModal" class="job-filter-button">
                 🎯 掛け持ち先で絞り込む
               </button>
@@ -978,11 +1075,12 @@ const getJobFilterName = (): string => {
 }
 
 const getJobFilterBannerStyle = () => {
-  if (selectedJobFilter.value === null || selectedJobFilter.value === undefined) {
-    // メイン店舗の場合は薄いグレー背景
+  if (selectedJobFilter.value === undefined) {
+    // メイン店舗の場合も透明感のある背景で統一
+    const color = '#6c757d' // メイン店舗のカラー
     return {
-      background: 'linear-gradient(135deg, #f8f9fa, #e9ecef)',
-      borderLeft: '4px solid #6c757d'
+      background: `linear-gradient(135deg, rgba(108, 117, 125, 0.08), rgba(108, 117, 125, 0.15))`,
+      borderLeft: `4px solid ${color}`
     }
   }
   // 掛け持ち先の場合は掛け持ち先の色
@@ -993,12 +1091,7 @@ const getJobFilterBannerStyle = () => {
   }
 }
 
-const getContainerBorderStyle = () => {
-  if (selectedJobFilter.value === null) {
-    // フィルター未選択時はボーダーなし
-    return {}
-  }
-
+const getFilterWrapperBorderStyle = () => {
   if (selectedJobFilter.value === undefined) {
     // メイン店舗選択時は薄いグレーのボーダー
     return {
@@ -1739,14 +1832,27 @@ const confirmTimeEdit = () => {
   margin: 0 auto;
 }
 
+/* 掛け持ち先フィルターラッパー（バナー + 一括設定を囲む） */
+.job-filter-wrapper {
+  border-radius: 16px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
 /* 掛け持ち先フィルターバナー */
 .job-filter-banner {
   background: linear-gradient(135deg, #f8f9fa, #e9ecef);
   border-radius: 12px;
   padding: 0.875rem 1.25rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
   border-left: 4px solid #6c757d;
+}
+
+/* ラッパー内の一括設定セクションはマージンを0に */
+.job-filter-wrapper .bulk-settings-section {
+  margin-bottom: 0;
 }
 
 .banner-content {
