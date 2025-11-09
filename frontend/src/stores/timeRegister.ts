@@ -142,6 +142,9 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
      * カレンダーから選択された日付を設定
      */
     initializeFromDates(dates: DateString[], dateJobMap: DateJobMap = {}) {
+      // デフォルト時刻を取得（一括設定ではなく、常にヘッダー設定の時刻を使用）
+      const defaultTimes = loadDefaultTimes()
+
       // dateJobMapから日付ごとのjobIdを展開してWorkDayを作成
       const workDaysList: WorkDay[] = []
 
@@ -157,11 +160,11 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
             date,
             dayOfWeek,
             weekNumber,
-            startTime: this.bulkSettings.startTime,
-            endTime: this.bulkSettings.endTime,
-            initialStartTime: this.bulkSettings.startTime,
-            initialEndTime: this.bulkSettings.endTime,
-            workMinutes: calculateWorkMinutes(this.bulkSettings.startTime, this.bulkSettings.endTime),
+            startTime: defaultTimes.startTime,
+            endTime: defaultTimes.endTime,
+            initialStartTime: defaultTimes.startTime,
+            initialEndTime: defaultTimes.endTime,
+            workMinutes: calculateWorkMinutes(defaultTimes.startTime, defaultTimes.endTime),
             isModified: false,
             isRemoved: false,
             displayDate: formatDisplayDate(dateObj, dayOfWeek),

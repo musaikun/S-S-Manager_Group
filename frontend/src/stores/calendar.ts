@@ -3,8 +3,9 @@ import type { CalendarState, DateString, HolidayData, CalendarTemplate, Job, Job
 
 /**
  * ジョブの固定色（蛍光色）
+ * 1: 蛍光黄色, 2: 蛍光緑, 3: 蛍光ピンク, 4: 蛍光水色
  */
-const JOB_COLORS: JobColor[] = ['#33FF33', '#FF10F0', '#BF40BF', '#00FFFF']
+const JOB_COLORS: JobColor[] = ['#FFFF00', '#39FF14', '#FF10F0', '#00FFFF']
 
 /**
  * カレンダー状態管理ストア

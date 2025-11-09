@@ -1192,6 +1192,7 @@ const confirmTimeEdit = () => {
   margin: 0;
   font-size: 1.1rem;
   color: #333;
+  text-align: center;
 }
 
 /* アコーディオンヘッダー */
@@ -1512,18 +1513,17 @@ const confirmTimeEdit = () => {
 .individual-settings-header {
   margin-bottom: 0.75rem;
   padding: 0.75rem 1rem;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .individual-settings-header h3 {
   margin: 0;
   font-size: 1rem;
   font-weight: 700;
-  color: white;
+  color: #333;
   text-align: center;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* 休憩時間設定 */

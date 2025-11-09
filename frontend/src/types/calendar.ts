@@ -14,8 +14,9 @@ export type JobId = 1 | 2 | 3 | 4
 
 /**
  * ジョブの色（蛍光色）
+ * 蛍光黄色, 蛍光緑, 蛍光ピンク, 蛍光水色
  */
-export type JobColor = '#33FF33' | '#FF10F0' | '#BF40BF' | '#00FFFF'
+export type JobColor = '#FFFF00' | '#39FF14' | '#FF10F0' | '#00FFFF'
 
 /**
  * ジョブ（勤務先）情報
