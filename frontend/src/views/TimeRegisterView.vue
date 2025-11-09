@@ -310,7 +310,7 @@
     <!-- 時間重複詳細モーダル -->
     <Teleport to="body">
       <div v-if="showConflictModal && selectedJobForConflict" class="modal-overlay" @click="closeConflictModal" @touchmove.prevent>
-        <div class="modal-content conflict-modal" @click.stop>
+        <div class="modal-content conflict-modal" @click.stop @touchmove.stop>
           <h3 class="modal-title">⚠️ 時間重複の詳細</h3>
           <div class="conflict-content">
             <div class="conflict-job-info">

@@ -254,10 +254,12 @@ const createFromBase = () => {
 
   // 保存されたシフトの各勤務日について、同じ曜日・週番号の日付を見つける
   const datesToSelect: string[] = []
+  const dateJobMap: Record<string, number[]> = {} // 日付 -> jobId[] のマッピング
 
   selectedShift.value.workDays.forEach(savedDay => {
     const targetDayOfWeek = savedDay.dayOfWeek
     const targetWeekNumber = savedDay.weekNumber
+    const savedJobId = savedDay.jobId
 
     // 現在の月の全ての日付をチェック
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
@@ -286,27 +288,45 @@ const createFromBase = () => {
         const today = new Date()
         today.setHours(0, 0, 0, 0)
         if (date >= today) {
-          datesToSelect.push(dateString)
+          if (!datesToSelect.includes(dateString)) {
+            datesToSelect.push(dateString)
+          }
+
+          // 掛け持ち情報を保持
+          if (savedJobId !== undefined) {
+            if (!dateJobMap[dateString]) {
+              dateJobMap[dateString] = []
+            }
+            if (!dateJobMap[dateString].includes(savedJobId)) {
+              dateJobMap[dateString].push(savedJobId)
+            }
+          }
         }
       }
     }
   })
 
-  // カレンダーに日付を選択
+  // カレンダーに日付を選択（掛け持ち情報も含めて）
   datesToSelect.forEach(date => {
     calendarStore.selectDate(date)
+
+    // 掛け持ち情報をdateJobMapに設定
+    if (dateJobMap[date]) {
+      calendarStore.dateJobMap[date] = dateJobMap[date]
+    }
   })
 
-  // 選択された日付でworkDaysを初期化
-  timeRegisterStore.initializeFromDates(datesToSelect)
+  // 選択された日付でworkDaysを初期化（掛け持ち情報を含む）
+  timeRegisterStore.initializeFromDates(datesToSelect, calendarStore.dateJobMap)
 
   // 保存されたシフトの時間を適用
   timeRegisterStore.workDays.forEach((workDay, index) => {
-    // 同じ曜日・週番号の保存されたシフトを探す
+    // 同じ曜日・週番号・jobIdの保存されたシフトを探す
     const matchedSavedDay = selectedShift.value!.workDays.find(
       savedDay =>
         savedDay.dayOfWeek === workDay.dayOfWeek &&
-        savedDay.weekNumber === workDay.weekNumber
+        savedDay.weekNumber === workDay.weekNumber &&
+        savedDay.jobId === workDay.jobId
     )
 
     if (matchedSavedDay) {
