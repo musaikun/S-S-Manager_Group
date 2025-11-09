@@ -400,13 +400,13 @@
 
     <!-- 時間重複詳細モーダル -->
     <Teleport to="body">
-      <div v-if="showConflictModal && selectedJobForConflict" class="modal-overlay" @click="closeConflictModal" @touchmove.prevent>
+      <div v-if="showConflictModal && selectedJobForConflict !== null" class="modal-overlay" @click="closeConflictModal" @touchmove.prevent>
         <div class="modal-content conflict-modal" @click.stop @touchmove.stop>
           <h3 class="modal-title">⚠️ 時間重複の詳細</h3>
           <div class="conflict-content">
             <div class="conflict-job-info">
               <span class="conflict-job-label">対象:</span>
-              <span class="conflict-job-name">{{ calendarStore.getJobById(selectedJobForConflict)?.name }}</span>
+              <span class="conflict-job-name">{{ getJobName(selectedJobForConflict) }}</span>
             </div>
 
             <div class="conflict-list">
@@ -418,8 +418,8 @@
                 <div class="conflict-date">{{ conflict.date }}</div>
                 <div class="conflict-details">
                   <div class="conflict-job-row">
-                    <span class="job-badge" :style="{ backgroundColor: calendarStore.getJobById(conflict.jobId1)?.color }">
-                      {{ calendarStore.getJobById(conflict.jobId1)?.name }}
+                    <span class="job-badge" :style="{ backgroundColor: getJobColor(conflict.jobId1) }" :class="{ 'main-store-badge': conflict.jobId1 === undefined }">
+                      {{ getJobName(conflict.jobId1) }}
                     </span>
                     <span class="time-range">{{ conflict.job1TimeSlot.startTime }} 〜 {{ conflict.job1TimeSlot.endTime }}</span>
                   </div>
@@ -428,8 +428,8 @@
                     <span class="overlap-text">重複時間: {{ formatOverlapTime(conflict.overlap) }}</span>
                   </div>
                   <div class="conflict-job-row">
-                    <span class="job-badge" :style="{ backgroundColor: calendarStore.getJobById(conflict.jobId2)?.color }">
-                      {{ calendarStore.getJobById(conflict.jobId2)?.name }}
+                    <span class="job-badge" :style="{ backgroundColor: getJobColor(conflict.jobId2) }" :class="{ 'main-store-badge': conflict.jobId2 === undefined }">
+                      {{ getJobName(conflict.jobId2) }}
                     </span>
                     <span class="time-range">{{ conflict.job2TimeSlot.startTime }} 〜 {{ conflict.job2TimeSlot.endTime }}</span>
                   </div>
@@ -667,7 +667,7 @@ const showHelpModal = ref(false)
 
 // 重複詳細モーダルの状態
 const showConflictModal = ref(false)
-const selectedJobForConflict = ref<JobId | null>(null)
+const selectedJobForConflict = ref<JobId | undefined | null>(null)
 
 // 給与計算の状態
 const hourlyWage = ref<number>(1000) // 時給（デフォルト1000円）
@@ -728,8 +728,6 @@ const isHighlighted = (workDay: WorkDay) => {
 
 // 特定のWorkDayに時間重複があるかチェック
 const hasConflict = (workDay: WorkDay): boolean => {
-  if (!workDay.jobId) return false
-
   return timeConflicts.value.some(conflict =>
     conflict.date === workDay.date &&
     (conflict.jobId1 === workDay.jobId || conflict.jobId2 === workDay.jobId)
@@ -738,8 +736,6 @@ const hasConflict = (workDay: WorkDay): boolean => {
 
 // 特定のジョブに重複があるかチェック
 const jobHasConflicts = (jobId: JobId | undefined): boolean => {
-  if (!jobId) return false
-
   return timeConflicts.value.some(conflict =>
     conflict.jobId1 === jobId || conflict.jobId2 === jobId
   )
@@ -747,15 +743,13 @@ const jobHasConflicts = (jobId: JobId | undefined): boolean => {
 
 // 特定のジョブに関連する重複情報を取得
 const getConflictsForJob = (jobId: JobId | undefined): ConflictInfo[] => {
-  if (!jobId) return []
-
   return timeConflicts.value.filter(conflict =>
     conflict.jobId1 === jobId || conflict.jobId2 === jobId
   )
 }
 
 // 重複詳細モーダルを開く
-const openConflictModal = (jobId: JobId) => {
+const openConflictModal = (jobId: JobId | undefined) => {
   selectedJobForConflict.value = jobId
   showConflictModal.value = true
 }
@@ -780,6 +774,22 @@ const formatOverlapTime = (overlap: TimeOverlap): string => {
   const endTime = minutesToTimeString(overlap.endMinutes)
   const duration = formatMinutesToHours(overlap.durationMinutes)
   return `${startTime} 〜 ${endTime} (${duration})`
+}
+
+// ジョブIDから名前を取得（メイン店舗対応）
+const getJobName = (jobId: JobId | undefined): string => {
+  if (jobId === undefined) {
+    return calendarStore.mainStoreDisplayName
+  }
+  return calendarStore.getJobById(jobId)?.name || ''
+}
+
+// ジョブIDから色を取得（メイン店舗対応）
+const getJobColor = (jobId: JobId | undefined): string => {
+  if (jobId === undefined) {
+    return '#FFFFFF' // メイン店舗は白
+  }
+  return calendarStore.getJobById(jobId)?.color || '#999'
 }
 
 // 開始時間ボタン配列（午前: 0-11、午後: 12-23）
@@ -2882,6 +2892,12 @@ const confirmTimeEdit = () => {
   min-width: 100px;
   text-align: center;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.job-badge.main-store-badge {
+  border: 1.5px solid #666;
+  color: #333;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
 }
 
 .time-range {
