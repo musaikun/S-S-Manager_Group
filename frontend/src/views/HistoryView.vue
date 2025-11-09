@@ -296,6 +296,15 @@ const createFromBase = () => {
     const targetWeekNumber = savedDay.weekNumber
     const savedJobId = savedDay.jobId
 
+    // 掛け持ち先が削除されていないか確認
+    if (savedJobId !== undefined) {
+      const jobExists = calendarStore.getJobById(savedJobId)
+      if (!jobExists) {
+        // 掛け持ち先が削除されている場合はスキップ
+        return
+      }
+    }
+
     // 現在の月の全ての日付をチェック
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
 
