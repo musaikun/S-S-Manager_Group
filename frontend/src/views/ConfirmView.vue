@@ -1,6 +1,30 @@
 <template>
   <div class="confirm-view">
     <div class="confirm-container">
+      <!-- 選択された日付一覧 -->
+      <div v-if="activeWorkDays.length > 0" class="selected-dates-section">
+        <h3 class="section-title">選択された日付</h3>
+        <div class="dates-list">
+          <span
+            v-for="workDay in sortedWorkDays"
+            :key="`${workDay.date}_${workDay.jobId || 'none'}`"
+            class="date-chip"
+            :class="{
+              'saturday': workDay.dayOfWeek === 6,
+              'sunday': workDay.dayOfWeek === 0,
+              'holiday': isHoliday(workDay.date)
+            }"
+          >
+            {{ workDay.displayDate }}
+            <span v-if="workDay.jobId" class="job-indicator" :style="{ backgroundColor: calendarStore.getJobById(workDay.jobId)?.color }"></span>
+          </span>
+        </div>
+        <div class="dates-summary">
+          合計 <strong>{{ uniqueDatesCount }}</strong> 日
+          <span v-if="hasMultipleJobs">（複数掛け持ちを含む）</span>
+        </div>
+      </div>
+
       <!-- 確認テーブル（ジョブごとにグループ分け） -->
       <div v-for="(group, groupIndex) in workDaysByJob" :key="groupIndex" class="job-group">
         <!-- ジョブヘッダー -->
@@ -24,7 +48,7 @@
             </thead>
             <tbody>
               <tr
-                v-for="(workDay, index) in group.workDays"
+                v-for="workDay in group.workDays"
                 :key="`${workDay.date}_${workDay.jobId || 'none'}`"
                 :class="{ modified: workDay.isModified }"
               >
@@ -153,7 +177,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useTimeRegisterStore } from '../stores/timeRegister'
 import { useCalendarStore } from '../stores/calendar'
@@ -197,6 +221,24 @@ const workDaysByJob = computed(() => {
   })
 
   return Object.values(grouped)
+})
+
+// 日付順にソートされたWorkDays
+const sortedWorkDays = computed(() => {
+  return [...activeWorkDays.value].sort((a, b) => {
+    return a.date.localeCompare(b.date)
+  })
+})
+
+// ユニークな日付の数
+const uniqueDatesCount = computed(() => {
+  const uniqueDates = new Set(activeWorkDays.value.map(wd => wd.date))
+  return uniqueDates.size
+})
+
+// 複数のジョブがあるか
+const hasMultipleJobs = computed(() => {
+  return jobSummaries.value.length > 1
 })
 
 // 勤務時間のフォーマット
@@ -439,6 +481,22 @@ const copyToClipboard = async () => {
     console.error('クリップボードへのコピーに失敗:', err)
   }
 }
+
+// 初期化: カレンダーから直接遷移した場合にworkDaysを初期化
+const initializeWorkDaysIfNeeded = () => {
+  const selectedDates = Array.from(calendarStore.selectedDates)
+  const dateJobMap = calendarStore.dateJobMap
+
+  // workDaysが空で、カレンダーで日付が選択されている場合は初期化
+  if (timeRegisterStore.workDays.length === 0 && selectedDates.length > 0) {
+    timeRegisterStore.initializeFromDates(selectedDates, dateJobMap)
+  }
+}
+
+// マウント時に初期化
+onMounted(() => {
+  initializeWorkDaysIfNeeded()
+})
 </script>
 
 <style scoped>
@@ -452,6 +510,89 @@ const copyToClipboard = async () => {
 .confirm-container {
   max-width: 900px;
   margin: 0 auto;
+}
+
+/* 選択された日付セクション */
+.selected-dates-section {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 1rem 0;
+  text-align: center;
+}
+
+.dates-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.date-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border: 2px solid #dee2e6;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #333;
+  transition: all 0.2s ease;
+}
+
+.date-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.date-chip.saturday {
+  color: #2563eb;
+  border-color: #93c5fd;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+}
+
+.date-chip.sunday,
+.date-chip.holiday {
+  color: #ef4444;
+  border-color: #fca5a5;
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+}
+
+.job-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.dates-summary {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #666;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.dates-summary strong {
+  font-size: 1.1rem;
+  color: #667eea;
+  font-weight: 700;
+}
+
+.dates-summary span {
+  color: #999;
+  font-size: 0.85rem;
 }
 
 /* 確認テーブル */
@@ -748,6 +889,19 @@ const copyToClipboard = async () => {
 @media (max-width: 768px) {
   .confirm-view {
     padding: 0.75rem;
+  }
+
+  .selected-dates-section {
+    padding: 1rem;
+  }
+
+  .section-title {
+    font-size: 1rem;
+  }
+
+  .date-chip {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
   }
 
   .confirm-table-wrapper {
