@@ -64,6 +64,39 @@
           </div>
         </div>
 
+        <!-- 掛け持ち先ごとの統計 -->
+        <div v-if="jobSummaries.length > 1" class="job-statistics">
+          <h3 class="job-stats-title">掛け持ち先別統計</h3>
+          <div class="job-stats-grid">
+            <div v-for="summary in jobSummaries" :key="summary.jobId || 'none'" class="job-stat-card">
+              <div class="job-stat-header">
+                <span
+                  v-if="summary.jobId"
+                  class="job-stat-indicator"
+                  :style="{ backgroundColor: calendarStore.getJobById(summary.jobId)?.color }"
+                ></span>
+                <span class="job-stat-name">
+                  {{ summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : '掛け持ちなし' }}
+                </span>
+              </div>
+              <div class="job-stat-details">
+                <div class="job-stat-row">
+                  <span class="job-stat-label">勤務日数</span>
+                  <span class="job-stat-value">{{ summary.workDays }}日</span>
+                </div>
+                <div class="job-stat-row">
+                  <span class="job-stat-label">総勤務時間</span>
+                  <span class="job-stat-value">{{ formatMinutesToHours(summary.totalWorkMinutes) }}</span>
+                </div>
+                <div v-if="includeBreak" class="job-stat-row">
+                  <span class="job-stat-label">実労働時間</span>
+                  <span class="job-stat-value">{{ formatMinutesToHours(summary.totalActualWorkMinutes) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 備考入力欄 -->
         <div class="remarks-area">
           <label for="remarks" class="remarks-label">備考</label>
@@ -134,7 +167,7 @@ const calendarStore = useCalendarStore()
 const { isHoliday } = useHolidays()
 
 const { includeBreak, workDays, showSubmitModal } = storeToRefs(timeRegisterStore)
-const { totalSummary } = storeToRefs(timeRegisterStore)
+const { totalSummary, jobSummaries } = storeToRefs(timeRegisterStore)
 
 const { formatMinutesToHours } = useTimeFormat()
 const { calculateBreakTime } = useTimeCalculation()
@@ -288,12 +321,37 @@ const saveShiftData = () => {
 const generateShiftText = (): string => {
   let text = '【シフト提出】\n\n'
 
-  activeWorkDays.value.forEach(day => {
-    text += `${day.displayDate}: ${day.startTime}〜${day.endTime}\n`
+  // 掛け持ち先ごとにグループ分け
+  workDaysByJob.value.forEach(group => {
+    if (group.job) {
+      text += `【${group.job.name}】\n`
+    } else if (jobSummaries.value.length > 1) {
+      text += `【掛け持ちなし】\n`
+    }
+
+    group.workDays.forEach(day => {
+      text += `${day.displayDate}: ${day.startTime}〜${day.endTime}\n`
+    })
+    text += '\n'
   })
 
-  text += `\n【合計】\n`
+  text += `【合計】\n`
   text += `勤務日数: ${totalSummary.value.workDays}日\n`
+  text += `総勤務時間: ${formatMinutesToHours(totalSummary.value.totalWorkMinutes)}\n`
+
+  // 掛け持ち先別統計
+  if (jobSummaries.value.length > 1) {
+    text += `\n【掛け持ち先別】\n`
+    jobSummaries.value.forEach(summary => {
+      const jobName = summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : '掛け持ちなし'
+      text += `${jobName}:\n`
+      text += `  勤務日数: ${summary.workDays}日\n`
+      text += `  総勤務時間: ${formatMinutesToHours(summary.totalWorkMinutes)}\n`
+      if (includeBreak.value) {
+        text += `  実労働時間: ${formatMinutesToHours(summary.totalActualWorkMinutes)}\n`
+      }
+    })
+  }
 
   if (timeRegisterStore.remarks.trim()) {
     text += `\n【備考】\n${timeRegisterStore.remarks}\n`
@@ -328,19 +386,30 @@ const submitViaLine = () => {
 
 // CSVダウンロード
 const downloadCSV = () => {
-  let csv = '日付,開始時刻,終了時刻,勤務時間,実働時間,設定\n'
+  let csv = '日付,開始時刻,終了時刻,勤務時間,実働時間,設定,掛け持ち先\n'
 
   activeWorkDays.value.forEach(day => {
     const breakMinutes = calculateBreakTime(day.workMinutes)
     const actualMinutes = day.workMinutes - breakMinutes
     const status = getStatusText(day)
-    csv += `${day.displayDate},${day.startTime},${day.endTime},${formatMinutesToHours(day.workMinutes)},${formatMinutesToHours(actualMinutes)},${status}\n`
+    const jobName = day.jobId ? calendarStore.getJobById(day.jobId)?.name : '掛け持ちなし'
+    csv += `${day.displayDate},${day.startTime},${day.endTime},${formatMinutesToHours(day.workMinutes)},${formatMinutesToHours(actualMinutes)},${status},${jobName}\n`
   })
 
   csv += `\n合計\n`
   csv += `勤務日数,${totalSummary.value.workDays}日\n`
   csv += `総勤務時間,${formatMinutesToHours(totalSummary.value.totalWorkMinutes)}\n`
   csv += `実働時間,${formatMinutesToHours(totalSummary.value.totalActualWorkMinutes)}\n`
+
+  // 掛け持ち先別統計
+  if (jobSummaries.value.length > 1) {
+    csv += `\n掛け持ち先別統計\n`
+    csv += `掛け持ち先,勤務日数,総勤務時間,実労働時間\n`
+    jobSummaries.value.forEach(summary => {
+      const jobName = summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : '掛け持ちなし'
+      csv += `${jobName},${summary.workDays}日,${formatMinutesToHours(summary.totalWorkMinutes)},${formatMinutesToHours(summary.totalActualWorkMinutes)}\n`
+    })
+  }
 
   if (timeRegisterStore.remarks.trim()) {
     csv += `\n備考\n${timeRegisterStore.remarks}\n`
@@ -592,6 +661,87 @@ const copyToClipboard = async () => {
   width: 1px;
   height: 2.5rem;
   background: #e0e0e0;
+}
+
+/* 掛け持ち先別統計 */
+.job-statistics {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid #e0e0e0;
+}
+
+.job-stats-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 1rem 0;
+  text-align: center;
+}
+
+.job-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.job-stat-card {
+  background: linear-gradient(135deg, #f9fafb, #ffffff);
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 1rem;
+  transition: all 0.3s ease;
+}
+
+.job-stat-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  transform: translateY(-2px);
+}
+
+.job-stat-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.job-stat-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.job-stat-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #374151;
+}
+
+.job-stat-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.job-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.job-stat-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.job-stat-value {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #111827;
 }
 
 /* レスポンシブ */
