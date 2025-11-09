@@ -20,7 +20,8 @@ export const useCalendarStore = defineStore('calendar', {
     previousMonthData: null,
     dateJobMap: {},
     jobs: [],
-    currentJobId: null
+    currentJobId: null,
+    mainStoreName: ''
   }),
 
   getters: {
@@ -113,6 +114,13 @@ export const useCalendarStore = defineStore('calendar', {
         const jobIds = state.dateJobMap[dateString] || []
         return jobIds.includes(state.currentJobId)
       }
+    },
+
+    /**
+     * 本店名を取得（未設定の場合は'本店'）
+     */
+    mainStoreDisplayName: (state): string => {
+      return state.mainStoreName || '本店'
     }
   },
 
@@ -509,6 +517,31 @@ export const useCalendarStore = defineStore('calendar', {
       const savedDateJobMap = localStorage.getItem('dateJobMap')
       if (savedDateJobMap) {
         this.dateJobMap = JSON.parse(savedDateJobMap)
+      }
+    },
+
+    /**
+     * 本店名を設定
+     */
+    setMainStoreName(name: string) {
+      this.mainStoreName = name
+      this.saveMainStoreToLocalStorage()
+    },
+
+    /**
+     * 本店名をLocalStorageに保存
+     */
+    saveMainStoreToLocalStorage() {
+      localStorage.setItem('mainStoreName', this.mainStoreName)
+    },
+
+    /**
+     * 本店名をLocalStorageから読み込み
+     */
+    loadMainStoreFromLocalStorage() {
+      const savedMainStoreName = localStorage.getItem('mainStoreName')
+      if (savedMainStoreName) {
+        this.mainStoreName = savedMainStoreName
       }
     }
   }

@@ -21,20 +21,53 @@
     <footer class="copyright">
       © 2025 無才 / S×S Manager
     </footer>
+
+    <!-- 本店設定モーダル -->
+    <MainStoreSetupModal v-model="showMainStoreModal" @save="handleMainStoreSaved" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNavigationStore } from '../stores/navigation'
+import { useCalendarStore } from '../stores/calendar'
+import MainStoreSetupModal from '../components/MainStoreSetupModal.vue'
 
 const router = useRouter()
 const navigationStore = useNavigationStore()
+const calendarStore = useCalendarStore()
+
+const showMainStoreModal = ref(false)
+
+onMounted(() => {
+  // LocalStorageから本店名を読み込み
+  calendarStore.loadMainStoreFromLocalStorage()
+})
 
 /**
  * シフト提出画面へ遷移
  */
 const goToShiftSubmit = () => {
+  // 本店名が未設定の場合はモーダルを表示
+  if (!calendarStore.mainStoreName) {
+    showMainStoreModal.value = true
+  } else {
+    navigateToCalendar()
+  }
+}
+
+/**
+ * 本店設定が保存された後の処理
+ */
+const handleMainStoreSaved = () => {
+  navigateToCalendar()
+}
+
+/**
+ * カレンダー画面へ遷移
+ */
+const navigateToCalendar = () => {
   navigationStore.setNone() // トランジションを無効化
   router.push('/calendar')
 }

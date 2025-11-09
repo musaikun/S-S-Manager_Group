@@ -81,7 +81,7 @@
                   <span class="job-name">{{ group.job.name }}</span>
                 </div>
                 <div v-else class="job-group-header no-job">
-                  <span class="job-name">掛け持ちなし</span>
+                  <span class="job-name">{{ calendarStore.mainStoreDisplayName }}</span>
                 </div>
 
                 <div class="shift-detail-list">

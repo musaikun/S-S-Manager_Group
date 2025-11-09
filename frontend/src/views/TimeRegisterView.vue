@@ -128,7 +128,7 @@
           </button>
         </div>
         <div v-else class="job-group-header no-job">
-          <span class="job-name">掛け持ちなし</span>
+          <span class="job-name">{{ calendarStore.mainStoreDisplayName }}</span>
         </div>
 
         <!-- 勤務日カードリスト -->
@@ -242,7 +242,7 @@
                   :style="{ backgroundColor: calendarStore.getJobById(summary.jobId)?.color }"
                 ></span>
                 <span class="job-summary-name">
-                  {{ summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : '掛け持ちなし' }}
+                  {{ summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : calendarStore.mainStoreDisplayName }}
                 </span>
               </div>
 
@@ -281,7 +281,7 @@
 
           <!-- 給与簡易概算 -->
           <div class="salary-calc-section">
-            <!-- 掛け持ちなしの場合：時給入力と計算ボタン -->
+            <!-- 本店のみの場合：時給入力と計算ボタン -->
             <div v-if="jobSummaries.length <= 1" class="salary-input-row">
               <input
                 type="number"
@@ -303,7 +303,7 @@
               </button>
             </div>
 
-            <!-- 給与計算結果（掛け持ちなしの場合のみ） -->
+            <!-- 給与計算結果（本店のみの場合のみ） -->
             <div v-if="calculatedSalary > 0 && jobSummaries.length <= 1" class="salary-result">
               <div class="salary-result-row total-salary">
                 <span class="salary-result-label">合計給与:</span>

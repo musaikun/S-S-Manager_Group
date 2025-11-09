@@ -6,7 +6,7 @@
     <!-- カレンダーカード -->
       <div class="calendar-card">
         <!-- 選択中ジョブバナー -->
-        <div v-if="store.currentJobId !== null" class="current-job-banner" :style="{ backgroundColor: getCurrentJobColor() }">
+        <div class="current-job-banner" :style="{ backgroundColor: getCurrentJobColor() }">
           <span class="banner-text">{{ getCurrentJobName() }}で選択しています</span>
         </div>
 
@@ -94,6 +94,7 @@
                 v-for="jobId in getJobDotsForDate(cell.dateString)"
                 :key="jobId"
                 class="job-dot"
+                :class="{ 'main-store-dot': jobId === null }"
                 :style="{ backgroundColor: getJobColor(jobId) }"
               ></span>
             </div>
@@ -245,27 +246,42 @@ const hasTimeSettings = (dateString: string): boolean => {
   return workDay.startTimeSetBy !== 'default' || workDay.endTimeSetBy !== 'default'
 }
 
-// 指定した日付に設定されているジョブIDの配列を取得
+// 指定した日付に設定されているジョブIDの配列を取得（本店を含む）
 const getJobDotsForDate = (dateString: string) => {
-  return store.getJobsForDate(dateString)
+  const jobIds = store.getJobsForDate(dateString)
+  const isSelected = store.selectedDates.has(dateString)
+
+  // 選択されているけどジョブIDがない場合は、本店のみ（null を配列に追加）
+  if (isSelected && jobIds.length === 0) {
+    return [null] as any[]
+  }
+
+  return jobIds
 }
 
-// 指定したジョブIDの色を取得
-const getJobColor = (jobId: number) => {
+// 指定したジョブIDの色を取得（本店の場合は白）
+const getJobColor = (jobId: number | null) => {
+  if (jobId === null) {
+    return '#FFFFFF' // 本店は白
+  }
   const job = store.getJobById(jobId as any)
   return job?.color || '#999'
 }
 
 // 現在選択中のジョブ名を取得
 const getCurrentJobName = () => {
-  if (store.currentJobId === null) return ''
+  if (store.currentJobId === null) {
+    return store.mainStoreDisplayName
+  }
   const job = store.getJobById(store.currentJobId)
   return job?.name || ''
 }
 
 // 現在選択中のジョブの色を取得
 const getCurrentJobColor = () => {
-  if (store.currentJobId === null) return 'transparent'
+  if (store.currentJobId === null) {
+    return '#FFFFFF' // 本店は白
+  }
   const job = store.getJobById(store.currentJobId)
   return job?.color || '#999'
 }
@@ -821,6 +837,12 @@ const handleSelectByWeekday = (dayOfWeek: number) => {
   border-radius: 50%;
   display: inline-block;
   box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
+}
+
+/* 本店ドット（白）に枠線を追加 */
+.main-store-dot {
+  border: 1.5px solid #666;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
 }
 
 /* レスポンシブ */

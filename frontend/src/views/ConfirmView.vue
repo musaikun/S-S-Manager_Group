@@ -9,7 +9,7 @@
           <span class="job-name">{{ group.job.name }}</span>
         </div>
         <div v-else class="job-group-header no-job">
-          <span class="job-name">掛け持ちなし</span>
+          <span class="job-name">{{ calendarStore.mainStoreDisplayName }}</span>
         </div>
 
         <div class="confirm-table-wrapper">
@@ -73,7 +73,7 @@
               :style="{ backgroundColor: calendarStore.getJobById(summary.jobId)?.color }"
             ></span>
             <span class="job-stat-compact-name">
-              {{ summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : '掛け持ちなし' }}
+              {{ summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : calendarStore.mainStoreDisplayName }}
             </span>
             <span class="job-stat-compact-value">{{ summary.workDays }}日・{{ formatMinutesToHours(summary.totalWorkMinutes) }}</span>
           </div>
@@ -130,7 +130,7 @@
                   :style="{ backgroundColor: calendarStore.getJobById(summary.jobId)?.color }"
                 ></span>
                 <span class="job-selection-label">
-                  {{ summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : '掛け持ちなし' }}
+                  {{ summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : calendarStore.mainStoreDisplayName }}
                 </span>
                 <span class="job-selection-count">{{ summary.workDays }}日</span>
               </button>
@@ -272,7 +272,7 @@ const getSubmitTitle = (): string => {
     return '提出方法を選択'
   }
   if (selectedJobForSubmit.value === null) {
-    return '提出方法を選択（掛け持ちなし）'
+    return `提出方法を選択（${calendarStore.mainStoreDisplayName}）`
   }
   const job = calendarStore.getJobById(selectedJobForSubmit.value)
   return `提出方法を選択（${job?.name || '不明'}）`
@@ -414,7 +414,7 @@ const generateShiftText = (): string => {
   // 提出対象のジョブ名を表示
   if (selectedJobForSubmit.value !== 'all') {
     const jobName = selectedJobForSubmit.value === null
-      ? '掛け持ちなし'
+      ? calendarStore.mainStoreDisplayName
       : calendarStore.getJobById(selectedJobForSubmit.value)?.name
     text += `【${jobName}】\n`
   }
@@ -429,7 +429,7 @@ const generateShiftText = (): string => {
       if (group.job) {
         text += `【${group.job.name}】\n`
       } else {
-        text += `【掛け持ちなし】\n`
+        text += `【${calendarStore.mainStoreDisplayName}】\n`
       }
 
       const groupDays = group.workDays.filter(day => workDaysForSubmit.value.includes(day))
@@ -475,7 +475,7 @@ const getJobInfoForAlert = (): string => {
     return ''
   }
   if (selectedJobForSubmit.value === null) {
-    return '（掛け持ちなし）'
+    return `（${calendarStore.mainStoreDisplayName}）`
   }
   const job = calendarStore.getJobById(selectedJobForSubmit.value)
   return `（${job?.name || '不明'}）`
@@ -506,7 +506,7 @@ const downloadCSV = () => {
     const breakMinutes = calculateBreakTime(day.workMinutes)
     const actualMinutes = day.workMinutes - breakMinutes
     const status = getStatusText(day)
-    const jobName = day.jobId ? calendarStore.getJobById(day.jobId)?.name : '掛け持ちなし'
+    const jobName = day.jobId ? calendarStore.getJobById(day.jobId)?.name : calendarStore.mainStoreDisplayName
     csv += `${day.displayDate},${day.startTime},${day.endTime},${formatMinutesToHours(day.workMinutes)},${formatMinutesToHours(actualMinutes)},${status},${jobName}\n`
   })
 
