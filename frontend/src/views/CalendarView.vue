@@ -7,7 +7,7 @@
       <div class="calendar-card">
         <!-- 選択中ジョブバナー -->
         <div class="current-job-banner" :style="{ backgroundColor: getCurrentJobColor() }">
-          <span class="banner-text" :style="{ color: getCurrentJobTextColor() }">{{ getCurrentJobName() }}で選択しています</span>
+          <span class="banner-text" :style="{ color: getCurrentJobTextColor() }">{{ getCurrentJobName() }}を選択しています</span>
         </div>
 
         <!-- ヘッダー：年月 -->
@@ -110,6 +110,24 @@
         </div>
       </div>
 
+    <!-- クリア確認モーダル -->
+    <Teleport to="body">
+      <div v-if="showClearModal" class="modal-overlay" @click="closeClearModal">
+        <div class="modal-content clear-modal" @click.stop>
+          <h3 class="modal-title">選択をクリアしますか？</h3>
+          <div class="modal-message">
+            <p>現在 <strong>{{ selectedCount }}日</strong> が選択されています。</p>
+            <p v-if="hasAnyTimeSettings">時間設定が適用されている日付が含まれています。</p>
+            <p class="warning-text">クリアするとすべての選択と時間設定が削除されます。</p>
+          </div>
+          <div class="modal-buttons">
+            <button @click="closeClearModal" class="cancel-btn">キャンセル</button>
+            <button @click="confirmClear" class="confirm-clear-btn">クリアする</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
@@ -154,6 +172,7 @@ const { fetchHolidaysWithCache, holidays: holidaysData } = useHolidays()
 
 // ローカル状態
 const weekdays = ['日', '月', '火', '水', '木', '金', '土']
+const showClearModal = ref(false)
 
 // 今月・来月の判定
 const isThisMonth = computed(() => {
@@ -341,19 +360,22 @@ const handleSelectWeekdaysOnly = () => {
   selectWeekdaysOnly()
 }
 
-// クリア（確認付き）
+// クリア確認モーダルを開く
 const handleClearAll = () => {
-  const selectedDates = calendarCells.value.filter(cell => cell.isSelected).map(cell => cell.dateString)
-
-  // 時間設定がある日付が含まれているか確認
-  const hasSettings = selectedDates.some(date => hasTimeSettings(date))
-
-  if (hasSettings && selectedDates.length > 0) {
-    if (!confirm('時間設定が適用されている日付が含まれています。\nすべての選択を解除してもよろしいですか？')) {
-      return
-    }
+  // 選択がない場合は何もしない
+  if (selectedCount.value === 0) {
+    return
   }
+  showClearModal.value = true
+}
 
+// クリア確認モーダルを閉じる
+const closeClearModal = () => {
+  showClearModal.value = false
+}
+
+// クリア実行
+const confirmClear = () => {
   // すべての日付をクリア（掛け持ち設定も含む）
   store.selectedDates.clear()
   store.dateJobMap = {}
@@ -361,7 +383,15 @@ const handleClearAll = () => {
   // 時間登録の状態もクリア
   timeRegisterStore.workDays = []
   timeRegisterStore.remarks = ''
+
+  closeClearModal()
 }
+
+// 時間設定があるかどうかを判定
+const hasAnyTimeSettings = computed(() => {
+  const selectedDates = calendarCells.value.filter(cell => cell.isSelected).map(cell => cell.dateString)
+  return selectedDates.some(date => hasTimeSettings(date))
+})
 
 // 曜日別選択（確認付き）
 const handleSelectByWeekday = (dayOfWeek: number) => {
@@ -1011,5 +1041,98 @@ const handleSelectByWeekday = (dayOfWeek: number) => {
 .close-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* クリア確認モーダル */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 450px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal-title {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.5rem;
+  color: #333;
+  text-align: center;
+}
+
+.modal-message {
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.modal-message p {
+  margin: 0.5rem 0;
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.modal-message strong {
+  color: #667eea;
+  font-weight: 700;
+}
+
+.warning-text {
+  color: #ef4444 !important;
+  font-weight: 600;
+  margin-top: 1rem !important;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.cancel-btn,
+.confirm-clear-btn {
+  padding: 0.875rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cancel-btn {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.cancel-btn:hover {
+  background: #e0e0e0;
+}
+
+.confirm-clear-btn {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.confirm-clear-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
+.confirm-clear-btn:active {
+  transform: translateY(0);
 }
 </style>

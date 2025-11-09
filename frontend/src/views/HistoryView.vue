@@ -18,9 +18,6 @@
           <button @click="goToCalendar" class="empty-btn calendar-btn">
             カレンダーへ
           </button>
-          <button @click="goToHome" class="empty-btn home-btn">
-            ホームへ
-          </button>
         </div>
       </div>
 
@@ -351,22 +348,40 @@ const createFromBase = () => {
   })
 
   // メイン選択の日付を特定（掛け持ち情報がないor元々メインで選択されていた日付）
-  const mainDates = new Set<DateString>()
+  const mainDates = new Set<string>()
   selectedShift.value!.workDays.forEach(workDay => {
     if (workDay.jobId === undefined) {
-      // 過去の日付は除外して対応する未来の日付を追加
-      const date = new Date(workDay.date)
-      const dayOfWeek = date.getDay()
-      const weekNumber = workDay.weekNumber
+      const targetDayOfWeek = workDay.dayOfWeek
+      const targetWeekNumber = workDay.weekNumber
 
-      // 現在表示中の月で同じ曜日・週番号の日付を探す
-      for (let day = 1; day <= 31; day++) {
-        const targetDate = new Date(currentYear, currentMonth, day)
-        if (targetDate.getMonth() !== currentMonth) break
+      // 現在の月の全ての日付をチェック
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
 
-        const dateString = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-        if (targetDate.getDay() === dayOfWeek && datesToSelect.includes(dateString)) {
-          mainDates.add(dateString)
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(currentYear, currentMonth, day)
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const dayStr = String(date.getDate()).padStart(2, '0')
+        const dateString = `${year}-${month}-${dayStr}`
+        const dayOfWeek = date.getDay()
+
+        // 週番号を計算
+        const firstDay = new Date(currentYear, currentMonth, 1)
+        const firstDayOfWeek = firstDay.getDay()
+        const firstSunday = new Date(firstDay)
+        firstSunday.setDate(firstDay.getDate() - firstDayOfWeek)
+        const diffTime = date.getTime() - firstSunday.getTime()
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+        const weekNumber = Math.floor(diffDays / 7) + 1
+
+        // 曜日と週番号が一致する場合
+        if (dayOfWeek === targetDayOfWeek && weekNumber === targetWeekNumber) {
+          // 過去の日付は除外
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          if (date >= today) {
+            mainDates.add(dateString)
+          }
         }
       }
     }

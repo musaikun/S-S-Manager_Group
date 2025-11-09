@@ -1398,6 +1398,12 @@ const cancelTimeEdit = () => {
 
 // 時刻選択モーダルを確定
 const confirmTimeEdit = () => {
+  // 24時間勤務（同じ開始時刻と終了時刻）の防止
+  if (!isBulkMode.value && formattedStartTime.value === formattedEndTime.value) {
+    alert('開始時刻と終了時刻が同じです。\n24時間勤務は設定できません。\n異なる時刻を選択してください。')
+    return
+  }
+
   if (isBulkMode.value) {
     // 一括設定モードの場合
     if (bulkTimeType.value === 'start') {

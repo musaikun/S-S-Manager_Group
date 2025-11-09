@@ -443,14 +443,18 @@ const generateShiftText = (): string => {
 
       const groupDays = group.workDays.filter(day => workDaysForSubmit.value.includes(day))
       groupDays.forEach(day => {
-        text += `${day.displayDate}: ${day.startTime}〜${day.endTime}\n`
+        const workTime = formatWorkTime(day)
+        const status = getStatusText(day)
+        text += `${day.displayDate}: ${day.startTime}〜${day.endTime}（${workTime}）[${status}]\n`
       })
       text += '\n'
     })
   } else {
     // 単一ジョブまたは掛け持ちなしの場合
     workDaysForSubmit.value.forEach(day => {
-      text += `${day.displayDate}: ${day.startTime}〜${day.endTime}\n`
+      const workTime = formatWorkTime(day)
+      const status = getStatusText(day)
+      text += `${day.displayDate}: ${day.startTime}〜${day.endTime}（${workTime}）[${status}]\n`
     })
     text += '\n'
   }
@@ -475,7 +479,7 @@ const saveOnly = () => {
   saveShiftData()
   closeSubmitModal()
   const jobInfo = getJobInfoForAlert()
-  alert(`シフトを保存しました${jobInfo}`)
+  alert(`シフトを保存しました${jobInfo}\n\n※ 選択データは保持されています。引き続き編集や他の方法での提出が可能です。`)
 }
 
 // アラート用のジョブ情報を取得
@@ -497,6 +501,7 @@ const submitViaEmail = () => {
   window.location.href = `mailto:?subject=${subject}&body=${body}`
   saveShiftData()
   closeSubmitModal()
+  // メールアプリが開くため、データ保持のメッセージは表示しない
 }
 
 // LINE送信
@@ -505,6 +510,7 @@ const submitViaLine = () => {
   window.open(`https://line.me/R/share?text=${text}`, '_blank')
   saveShiftData()
   closeSubmitModal()
+  // LINE共有画面が開くため、データ保持のメッセージは表示しない
 }
 
 // CSVダウンロード
@@ -547,6 +553,7 @@ const downloadCSV = () => {
 
   saveShiftData()
   closeSubmitModal()
+  alert('CSVファイルをダウンロードしました\n\n※ 選択データは保持されています。引き続き編集や他の方法での提出が可能です。')
 }
 
 // クリップボードにコピー
@@ -555,8 +562,10 @@ const copyToClipboard = async () => {
     await navigator.clipboard.writeText(generateShiftText())
     saveShiftData()
     closeSubmitModal()
+    alert('シフト情報をコピーしました\n\n※ 選択データは保持されています。引き続き編集や他の方法での提出が可能です。')
   } catch (err) {
     console.error('クリップボードへのコピーに失敗:', err)
+    alert('コピーに失敗しました')
   }
 }
 
