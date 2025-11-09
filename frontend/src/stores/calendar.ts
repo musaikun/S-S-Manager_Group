@@ -51,11 +51,13 @@ export const useCalendarStore = defineStore('calendar', {
     },
 
     /**
-     * 指定した日付が選択されているか
+     * 指定した日付が選択されているか（メインまたは掛け持ちのいずれか）
      */
     isDateSelected: (state) => {
       return (dateString: DateString): boolean => {
-        return state.selectedDates.has(dateString)
+        const hasMainSelection = state.selectedDates.has(dateString)
+        const hasSideJobSelection = (state.dateJobMap[dateString] || []).length > 0
+        return hasMainSelection || hasSideJobSelection
       }
     },
 
