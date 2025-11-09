@@ -928,20 +928,44 @@ const calculatedWorkHours = computed(() => {
   return formatMinutesToHours(minutes)
 })
 
-// デフォルト時刻を読み込む
+// デフォルト時刻を読み込む（新形式に対応）
 const loadDefaultTimes = () => {
   const saved = localStorage.getItem('defaultTimes')
   if (saved) {
     const parsed = JSON.parse(saved)
+    // 古い形式（直接startTime/endTimeがある）の場合
+    if (parsed.startTime && parsed.endTime && !parsed.main) {
+      return {
+        main: {
+          startTime: parsed.startTime || '09:00',
+          endTime: parsed.endTime || '18:00'
+        },
+        jobs: {}
+      }
+    }
+    // 新形式の場合
     return {
-      startTime: parsed.startTime || '09:00',
-      endTime: parsed.endTime || '18:00'
+      main: parsed.main || { startTime: '09:00', endTime: '18:00' },
+      jobs: parsed.jobs || {}
     }
   }
   return {
-    startTime: '09:00',
-    endTime: '18:00'
+    main: {
+      startTime: '09:00',
+      endTime: '18:00'
+    },
+    jobs: {}
   }
+}
+
+// 特定のジョブまたはメイン店舗のデフォルト時刻を取得
+const getDefaultTimesForJob = (jobId: JobId | undefined) => {
+  const allDefaults = loadDefaultTimes()
+  if (jobId === undefined) {
+    return allDefaults.main
+  }
+  // 掛け持ち先のデフォルト時刻がなければメイン店舗と同じ
+  return allDefaults.jobs[jobId] || allDefaults.main
 }
 
 // カードの背景色クラスを取得
@@ -995,7 +1019,7 @@ const getEndTimeClass = (workDay: WorkDay) => {
 // 左ボーダーの色配列を取得（最大2色）
 const getBorderColors = (workDay: WorkDay) => {
   const colors = new Set<string>()
-  const defaultTimes = loadDefaultTimes()
+  const defaultTimes = getDefaultTimesForJob(workDay.jobId)
 
   // 設定方法を収集
   if (workDay.startTimeSetBy === 'custom' || workDay.endTimeSetBy === 'custom') {

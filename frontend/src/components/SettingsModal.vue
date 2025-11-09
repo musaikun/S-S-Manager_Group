@@ -8,15 +8,15 @@
         </div>
 
         <div class="modal-body">
-          <!-- デフォルト時刻設定 -->
+          <!-- メイン店舗のデフォルト時刻設定 -->
           <div class="settings-section">
-            <h3 class="section-title">デフォルト時刻</h3>
+            <h3 class="section-title">メイン店舗のデフォルト時刻</h3>
 
             <!-- 開始時刻 -->
             <div class="time-setting">
               <label class="time-label">開始時刻</label>
-              <div class="time-display" @click="openTimePicker">
-                {{ displayStartTime }}
+              <div class="time-display" @click="openTimePicker('main')">
+                {{ displayMainStartTime }}
                 <span class="edit-icon">✎</span>
               </div>
             </div>
@@ -24,13 +24,40 @@
             <!-- 終了時刻 -->
             <div class="time-setting">
               <label class="time-label">終了時刻</label>
-              <div class="time-display" @click="openTimePicker">
-                {{ displayEndTime }}
+              <div class="time-display" @click="openTimePicker('main')">
+                {{ displayMainEndTime }}
                 <span class="edit-icon">✎</span>
               </div>
             </div>
 
             <p class="settings-note">※ 一括設定の初期値として使用されます</p>
+          </div>
+
+          <!-- 掛け持ち先のデフォルト時刻設定 -->
+          <div v-for="job in activeJobs" :key="job.id" class="settings-section">
+            <h3 class="section-title" :style="{ borderBottomColor: job.color }">
+              {{ job.name }}のデフォルト時刻
+            </h3>
+
+            <!-- 開始時刻 -->
+            <div class="time-setting">
+              <label class="time-label">開始時刻</label>
+              <div class="time-display" @click="openTimePicker(job.id)">
+                {{ getDisplayStartTime(job.id) }}
+                <span class="edit-icon">✎</span>
+              </div>
+            </div>
+
+            <!-- 終了時刻 -->
+            <div class="time-setting">
+              <label class="time-label">終了時刻</label>
+              <div class="time-display" @click="openTimePicker(job.id)">
+                {{ getDisplayEndTime(job.id) }}
+                <span class="edit-icon">✎</span>
+              </div>
+            </div>
+
+            <p class="settings-note">※ この掛け持ち先の一括設定の初期値として使用されます</p>
           </div>
 
           <!-- 履歴管理 -->
@@ -59,7 +86,7 @@
     <!-- 時刻選択モーダル -->
     <div v-if="showTimePicker" class="modal-overlay" @click="closeTimePicker" @touchmove.prevent>
       <div class="modal-content time-picker-modal" @click.stop>
-        <h3 class="modal-title">デフォルト時刻設定</h3>
+        <h3 class="modal-title">{{ currentEditTargetName }}</h3>
 
         <!-- 開始時間 -->
         <div class="modal-section">
@@ -182,6 +209,8 @@
 import { ref, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useTimeRegisterStore } from '../stores/timeRegister'
+import { useCalendarStore } from '../stores/calendar'
+import type { JobId } from '../types/calendar'
 
 const props = defineProps<{
   isOpen: boolean
@@ -192,20 +221,61 @@ const emit = defineEmits<{
 }>()
 
 const timeRegisterStore = useTimeRegisterStore()
+const calendarStore = useCalendarStore()
+
+// アクティブなジョブ一覧
+const activeJobs = computed(() => calendarStore.activeJobs)
+
+// デフォルト時刻の型定義
+interface DefaultTimes {
+  main: {
+    startTime: string
+    endTime: string
+  }
+  jobs: Partial<Record<JobId, {
+    startTime: string
+    endTime: string
+  }>>
+}
 
 // デフォルト時刻（LocalStorageから読み込み、独立管理）
-const loadDefaultTimes = () => {
+const loadDefaultTimes = (): DefaultTimes => {
   const saved = localStorage.getItem('defaultTimes')
   if (saved) {
-    return JSON.parse(saved)
+    try {
+      const parsed = JSON.parse(saved)
+      // 古い形式（直接startTime/endTimeがある）の場合は新形式に変換
+      if (parsed.startTime && parsed.endTime && !parsed.main) {
+        return {
+          main: {
+            startTime: parsed.startTime,
+            endTime: parsed.endTime
+          },
+          jobs: {}
+        }
+      }
+      // 新形式の場合はそのまま使用（jobsがない場合は空オブジェクトで初期化）
+      return {
+        main: parsed.main || { startTime: '09:00', endTime: '18:00' },
+        jobs: parsed.jobs || {}
+      }
+    } catch (e) {
+      console.error('Failed to parse defaultTimes:', e)
+    }
   }
   return {
-    startTime: '09:00',
-    endTime: '18:00'
+    main: {
+      startTime: '09:00',
+      endTime: '18:00'
+    },
+    jobs: {}
   }
 }
 
-const defaultTimes = ref(loadDefaultTimes())
+const defaultTimes = ref<DefaultTimes>(loadDefaultTimes())
+
+// 現在編集中のターゲット（'main' または JobId）
+const currentEditTarget = ref<'main' | JobId>('main')
 
 // 時刻ピッカーの状態
 const showTimePicker = ref(false)
@@ -216,9 +286,28 @@ const selectedStartMinute = ref(0) // 0, 15, 30, 45
 const selectedEndHour = ref(18) // 0-23の範囲
 const selectedEndMinute = ref(0) // 0, 15, 30, 45
 
-// 表示用の時刻
-const displayStartTime = computed(() => defaultTimes.value.startTime)
-const displayEndTime = computed(() => defaultTimes.value.endTime)
+// 編集中のターゲット名
+const currentEditTargetName = computed(() => {
+  if (currentEditTarget.value === 'main') {
+    return 'メイン店舗のデフォルト時刻設定'
+  }
+  const job = activeJobs.value.find(j => j.id === currentEditTarget.value)
+  return job ? `${job.name}のデフォルト時刻設定` : 'デフォルト時刻設定'
+})
+
+// メイン店舗の表示用時刻
+const displayMainStartTime = computed(() => defaultTimes.value.main.startTime)
+const displayMainEndTime = computed(() => defaultTimes.value.main.endTime)
+
+// 掛け持ち先の開始時刻を取得（未設定ならメイン店舗と同じ）
+const getDisplayStartTime = (jobId: JobId): string => {
+  return defaultTimes.value.jobs[jobId]?.startTime || defaultTimes.value.main.startTime
+}
+
+// 掛け持ち先の終了時刻を取得（未設定ならメイン店舗と同じ）
+const getDisplayEndTime = (jobId: JobId): string => {
+  return defaultTimes.value.jobs[jobId]?.endTime || defaultTimes.value.main.endTime
+}
 
 // 開始時間ボタン配列（午前: 0-11、午後: 12-23）
 const startHourButtons = computed(() => {
@@ -253,15 +342,28 @@ const formattedEndTime = computed(() => {
 })
 
 // 時刻ピッカーを開く
-const openTimePicker = () => {
-  // 現在のデフォルト時刻を取得
-  const [startHourStr, startMinuteStr] = defaultTimes.value.startTime.split(':')
-  const [endHourStr, endMinuteStr] = defaultTimes.value.endTime.split(':')
+const openTimePicker = (target: 'main' | JobId) => {
+  currentEditTarget.value = target
 
-  const startHour = parseInt(startHourStr)
-  const startMinute = parseInt(startMinuteStr)
-  const endHour = parseInt(endHourStr)
-  const endMinute = parseInt(endMinuteStr)
+  // 現在のデフォルト時刻を取得
+  let startTime: string
+  let endTime: string
+
+  if (target === 'main') {
+    startTime = defaultTimes.value.main.startTime
+    endTime = defaultTimes.value.main.endTime
+  } else {
+    startTime = defaultTimes.value.jobs[target]?.startTime || defaultTimes.value.main.startTime
+    endTime = defaultTimes.value.jobs[target]?.endTime || defaultTimes.value.main.endTime
+  }
+
+  const [startHourStr = '9', startMinuteStr = '0'] = startTime.split(':')
+  const [endHourStr = '18', endMinuteStr = '0'] = endTime.split(':')
+
+  const startHour = parseInt(startHourStr, 10)
+  const startMinute = parseInt(startMinuteStr, 10)
+  const endHour = parseInt(endHourStr, 10)
+  const endMinute = parseInt(endMinuteStr, 10)
 
   selectedStartHour.value = startHour
   selectedStartMinute.value = startMinute
@@ -299,18 +401,38 @@ const selectEndMinute = (minute: number) => {
 
 // 時刻を適用
 const applyTime = () => {
+  const newStartTime = formattedStartTime.value
+  const newEndTime = formattedEndTime.value
+
   // デフォルト時刻を更新
-  defaultTimes.value.startTime = formattedStartTime.value
-  defaultTimes.value.endTime = formattedEndTime.value
+  if (currentEditTarget.value === 'main') {
+    defaultTimes.value.main.startTime = newStartTime
+    defaultTimes.value.main.endTime = newEndTime
+
+    // メイン店舗の場合は一括設定にも反映
+    timeRegisterStore.updateBulkSettings({
+      startTime: newStartTime,
+      endTime: newEndTime
+    })
+  } else {
+    // 掛け持ち先の場合
+    const target = currentEditTarget.value as JobId
+    if (!defaultTimes.value.jobs[target]) {
+      defaultTimes.value.jobs[target] = {
+        startTime: newStartTime,
+        endTime: newEndTime
+      }
+    } else {
+      const jobTimes = defaultTimes.value.jobs[target]
+      if (jobTimes) {
+        jobTimes.startTime = newStartTime
+        jobTimes.endTime = newEndTime
+      }
+    }
+  }
 
   // LocalStorageに保存
   localStorage.setItem('defaultTimes', JSON.stringify(defaultTimes.value))
-
-  // 一括設定にも反映
-  timeRegisterStore.updateBulkSettings({
-    startTime: defaultTimes.value.startTime,
-    endTime: defaultTimes.value.endTime
-  })
 
   closeTimePicker()
 }
