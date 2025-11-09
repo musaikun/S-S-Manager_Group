@@ -536,6 +536,7 @@ watch(endPm, (newIsPm) => {
 .action-label {
   font-weight: 600;
   color: #333;
+  font-size: 11px;
 }
 
 /* Time Picker Modal */
