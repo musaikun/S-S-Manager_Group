@@ -74,14 +74,25 @@
             <!-- シフト詳細 -->
             <div class="detail-section">
               <h3 class="section-title">シフト詳細</h3>
-              <div class="shift-detail-list">
-                <div
-                  v-for="day in selectedShift.workDays"
-                  :key="day.date"
-                  class="shift-detail-item"
-                >
-                  <span class="shift-date">{{ day.displayDate }}</span>
-                  <span class="shift-time">{{ day.startTime }}〜{{ day.endTime }}</span>
+              <div v-for="(group, groupIndex) in workDaysByJob" :key="groupIndex" class="job-group">
+                <!-- ジョブヘッダー -->
+                <div v-if="group.job" class="job-group-header" :style="{ borderLeftColor: group.job.color }">
+                  <span class="job-color-indicator" :style="{ backgroundColor: group.job.color }"></span>
+                  <span class="job-name">{{ group.job.name }}</span>
+                </div>
+                <div v-else class="job-group-header no-job">
+                  <span class="job-name">掛け持ちなし</span>
+                </div>
+
+                <div class="shift-detail-list">
+                  <div
+                    v-for="day in group.workDays"
+                    :key="`${day.date}_${day.jobId || 'none'}`"
+                    class="shift-detail-item"
+                  >
+                    <span class="shift-date">{{ day.displayDate }}</span>
+                    <span class="shift-time">{{ day.startTime }}〜{{ day.endTime }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -148,7 +159,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTimeFormat } from '../composables/useTimeFormat'
 
@@ -173,6 +184,30 @@ const savedShifts = ref<SavedShift[]>([])
 const selectedShift = ref<SavedShift | null>(null)
 const selectedIndex = ref<number>(-1)
 const showShareModal = ref<boolean>(false)
+
+// シフト詳細をjobIdでグループ化
+const workDaysByJob = computed(() => {
+  if (!selectedShift.value) return []
+
+  const grouped: Record<string, { job: any; workDays: any[] }> = {}
+
+  selectedShift.value.workDays.forEach((day) => {
+    const jobId = day.jobId
+    const key = jobId?.toString() || 'none'
+
+    if (!grouped[key]) {
+      const job = jobId ? calendarStore.getJobById(jobId) : null
+      grouped[key] = {
+        job,
+        workDays: []
+      }
+    }
+
+    grouped[key].workDays.push(day)
+  })
+
+  return Object.values(grouped)
+})
 
 const handleBack = () => {
   router.push('/calendar')
@@ -700,6 +735,40 @@ onMounted(() => {
 .detail-value {
   font-size: 0.875rem;
   font-weight: 600;
+  color: #333;
+}
+
+.job-group {
+  margin-bottom: 1rem;
+}
+
+.job-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  border-radius: 6px;
+  border-left: 3px solid;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.job-group-header.no-job {
+  border-left-color: #9ca3af;
+  background: linear-gradient(135deg, rgba(156, 163, 175, 0.1), rgba(209, 213, 219, 0.1));
+}
+
+.job-color-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
+}
+
+.job-name {
+  font-size: 0.9rem;
   color: #333;
 }
 
