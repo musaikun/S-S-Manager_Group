@@ -528,6 +528,8 @@ export const useCalendarStore = defineStore('calendar', {
     saveJobsToLocalStorage() {
       localStorage.setItem('jobs', JSON.stringify(this.jobs))
       localStorage.setItem('dateJobMap', JSON.stringify(this.dateJobMap))
+      // selectedDates（メイン店舗の日付を含む）も保存
+      localStorage.setItem('selectedDates', JSON.stringify(Array.from(this.selectedDates)))
     },
 
     /**
@@ -542,6 +544,13 @@ export const useCalendarStore = defineStore('calendar', {
       const savedDateJobMap = localStorage.getItem('dateJobMap')
       if (savedDateJobMap) {
         this.dateJobMap = JSON.parse(savedDateJobMap)
+      }
+
+      // selectedDates（メイン店舗の日付を含む）も復元
+      const savedSelectedDates = localStorage.getItem('selectedDates')
+      if (savedSelectedDates) {
+        const datesArray = JSON.parse(savedSelectedDates) as DateString[]
+        this.selectedDates = new Set(datesArray)
       }
     },
 

@@ -263,7 +263,15 @@ const workDaysForSubmit = computed(() => {
   if (selectedJobForSubmit.value === 'all') {
     return activeWorkDays.value
   }
-  return activeWorkDays.value.filter(wd => wd.jobId === selectedJobForSubmit.value)
+  // メイン店舗の場合は jobId が undefined なので、undefined と null の両方をチェック
+  const targetJobId = selectedJobForSubmit.value
+  return activeWorkDays.value.filter(wd => {
+    // nullとundefinedを同一視する
+    if ((targetJobId === null || targetJobId === undefined) && (wd.jobId === null || wd.jobId === undefined)) {
+      return true
+    }
+    return wd.jobId === targetJobId
+  })
 })
 
 // ジョブを選択
