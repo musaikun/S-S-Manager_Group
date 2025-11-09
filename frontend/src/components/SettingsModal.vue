@@ -8,6 +8,23 @@
         </div>
 
         <div class="modal-body">
+          <!-- メイン店舗の名前設定 -->
+          <div class="settings-section">
+            <h3 class="section-title">メイン店舗の名前</h3>
+            <div class="name-setting">
+              <input
+                v-model="mainStoreName"
+                @blur="updateMainStoreName"
+                @keyup.enter="updateMainStoreName"
+                type="text"
+                class="name-input"
+                placeholder="メイン店舗の名前を入力"
+                maxlength="20"
+              />
+            </div>
+            <p class="settings-note">※ シフト提出時などに表示される名前です</p>
+          </div>
+
           <!-- メイン店舗のデフォルト時刻設定 -->
           <div class="settings-section">
             <h3 class="section-title">メイン店舗のデフォルト時刻</h3>
@@ -33,11 +50,25 @@
             <p class="settings-note">※ 一括設定の初期値として使用されます</p>
           </div>
 
-          <!-- 掛け持ち先のデフォルト時刻設定 -->
+          <!-- 掛け持ち先の設定 -->
           <div v-for="job in activeJobs" :key="job.id" class="settings-section">
             <h3 class="section-title" :style="{ borderBottomColor: job.color }">
-              {{ job.name }}のデフォルト時刻
+              {{ job.name }}の設定
             </h3>
+
+            <!-- 名前編集 -->
+            <div class="name-setting">
+              <label class="time-label">名前</label>
+              <input
+                :value="job.name"
+                @blur="(e) => updateJobName(job.id, (e.target as HTMLInputElement).value)"
+                @keyup.enter="(e) => updateJobName(job.id, (e.target as HTMLInputElement).value)"
+                type="text"
+                class="name-input"
+                placeholder="掛け持ち先の名前を入力"
+                maxlength="20"
+              />
+            </div>
 
             <!-- 開始時刻 -->
             <div class="time-setting">
@@ -225,6 +256,26 @@ const calendarStore = useCalendarStore()
 
 // アクティブなジョブ一覧
 const activeJobs = computed(() => calendarStore.activeJobs)
+
+// メイン店舗名
+const mainStoreName = ref(calendarStore.mainStoreName || 'メイン店舗')
+
+// メイン店舗名を更新
+const updateMainStoreName = () => {
+  const trimmedName = mainStoreName.value.trim()
+  if (trimmedName) {
+    calendarStore.setMainStoreName(trimmedName)
+    calendarStore.saveMainStoreToLocalStorage()
+  }
+}
+
+// 掛け持ち先の名前を更新
+const updateJobName = (jobId: JobId, newName: string) => {
+  const trimmedName = newName.trim()
+  if (trimmedName) {
+    calendarStore.updateJob(jobId, trimmedName)
+  }
+}
 
 // デフォルト時刻の型定義
 interface DefaultTimes {
@@ -618,6 +669,33 @@ watch(endPm, (newIsPm) => {
   font-size: 0.7rem;
   color: #999;
   margin: 0.5rem 0 0 0;
+}
+
+.name-setting {
+  margin-bottom: 0.75rem;
+}
+
+.name-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #333;
+  transition: all 0.3s ease;
+  background: #f8f9fa;
+}
+
+.name-input:focus {
+  outline: none;
+  border-color: #667eea;
+  background: white;
+}
+
+.name-input::placeholder {
+  color: #999;
+  font-weight: 400;
 }
 
 .action-btn {

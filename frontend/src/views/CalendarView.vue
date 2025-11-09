@@ -198,8 +198,11 @@ const handleDateClick = (cell: CalendarCell) => {
   if (!cell.isCurrentMonth) return
   if (cell.isPast) return // 過去の日付は選択できない
 
+  // 掛け持ちモードの場合は確認ダイアログをスキップ
+  const isJobMode = store.currentJobId !== null
+
   // 日付を外す場合（選択済み→未選択）、設定がある場合は確認
-  if (store.isDateSelected(cell.dateString)) {
+  if (store.isDateSelected(cell.dateString) && !isJobMode) {
     const workDay = timeRegisterStore.workDays.find(wd => wd.date === cell.dateString)
 
     // デフォルト以外の設定が適用されている場合は確認
@@ -319,16 +322,21 @@ const getCurrentJobTextColor = () => {
 
 // 休日基準で選択（確認付き）
 const handleSelectAll = () => {
-  // 選択を解除する日付を確認
-  const currentMonthCells = calendarCells.value.filter(cell => cell.isCurrentMonth && !cell.isPast)
-  const datesToDeselect = currentMonthCells.filter(cell => cell.isSelected).map(cell => cell.dateString)
+  // 掛け持ちモードの場合は確認ダイアログをスキップ
+  const isJobMode = store.currentJobId !== null
 
-  // 時間設定がある日付が含まれているか確認
-  const hasSettings = datesToDeselect.some(date => hasTimeSettings(date))
+  if (!isJobMode) {
+    // 選択を解除する日付を確認
+    const currentMonthCells = calendarCells.value.filter(cell => cell.isCurrentMonth && !cell.isPast)
+    const datesToDeselect = currentMonthCells.filter(cell => cell.isSelected).map(cell => cell.dateString)
 
-  if (hasSettings && datesToDeselect.length > 0) {
-    if (!confirm('時間設定が適用されている日付が含まれています。\n選択を変更してもよろしいですか？')) {
-      return
+    // 時間設定がある日付が含まれているか確認
+    const hasSettings = datesToDeselect.some(date => hasTimeSettings(date))
+
+    if (hasSettings && datesToDeselect.length > 0) {
+      if (!confirm('時間設定が適用されている日付が含まれています。\n選択を変更してもよろしいですか？')) {
+        return
+      }
     }
   }
 
@@ -398,6 +406,9 @@ const hasAnyTimeSettings = computed(() => {
 
 // 曜日別選択（確認付き）
 const handleSelectByWeekday = (dayOfWeek: number) => {
+  // 掛け持ちモードの場合は確認ダイアログをスキップ
+  const isJobMode = store.currentJobId !== null
+
   const currentMonthCells = calendarCells.value.filter(cell => cell.isCurrentMonth && !cell.isPast)
 
   // 対象曜日の日付を取得
@@ -406,7 +417,7 @@ const handleSelectByWeekday = (dayOfWeek: number) => {
   // すでに全て選択されている場合は解除される
   const allSelected = targetDates.every(date => store.isDateSelected(date))
 
-  if (allSelected) {
+  if (allSelected && !isJobMode) {
     // 時間設定がある日付が含まれているか確認
     const hasSettings = targetDates.some(date => hasTimeSettings(date))
 
