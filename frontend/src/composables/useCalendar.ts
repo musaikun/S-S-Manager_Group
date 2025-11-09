@@ -210,7 +210,7 @@ export function useCalendar() {
   })
 
   /**
-   * 指定曜日の日付が全て選択されているか
+   * 指定曜日の日付が全て選択されているか（Job対応版）
    */
   const isWeekdayFullySelected = (dayOfWeek: number): boolean => {
     const targetDates = currentMonthFutureDates.value.filter(dateString => {
@@ -219,19 +219,39 @@ export function useCalendar() {
     })
 
     if (targetDates.length === 0) return false
-    return targetDates.every(date => store.isDateSelected(date))
+
+    if (store.currentJobId === null) {
+      // 掛け持ちなしモードの場合は従来通り
+      return targetDates.every(date => store.isDateSelected(date))
+    } else {
+      // 掛け持ちモードの場合は現在のジョブで選択されているか
+      return targetDates.every(date => {
+        const jobIds = store.getJobsForDate(date)
+        return jobIds.includes(store.currentJobId!)
+      })
+    }
   }
 
   /**
-   * 全ての日付が選択されているか
+   * 全ての日付が選択されているか（Job対応版）
    */
   const isAllSelected = computed<boolean>(() => {
     if (currentMonthFutureDates.value.length === 0) return false
-    return currentMonthFutureDates.value.every(date => store.isDateSelected(date))
+
+    if (store.currentJobId === null) {
+      // 掛け持ちなしモードの場合は従来通り
+      return currentMonthFutureDates.value.every(date => store.isDateSelected(date))
+    } else {
+      // 掛け持ちモードの場合は現在のジョブで選択されているか
+      return currentMonthFutureDates.value.every(date => {
+        const jobIds = store.getJobsForDate(date)
+        return jobIds.includes(store.currentJobId!)
+      })
+    }
   })
 
   /**
-   * 平日のみが選択されているか
+   * 平日のみが選択されているか（Job対応版）
    */
   const isWeekdaysOnlySelected = computed<boolean>(() => {
     const futureCells = currentMonthCells.value.filter(cell => !cell.isPast)
@@ -249,11 +269,23 @@ export function useCalendar() {
       return !(isWeekday && !cell.isHoliday)
     })
 
-    // 平日がすべて選択されていて、非平日がすべて選択されていない
-    const allWeekdaysSelected = weekdayCells.length > 0 && weekdayCells.every(cell => cell.isSelected)
-    const noNonWeekdaysSelected = nonWeekdayCells.every(cell => !cell.isSelected)
-
-    return allWeekdaysSelected && noNonWeekdaysSelected
+    if (store.currentJobId === null) {
+      // 掛け持ちなしモードの場合は従来通り
+      const allWeekdaysSelected = weekdayCells.length > 0 && weekdayCells.every(cell => cell.isSelected)
+      const noNonWeekdaysSelected = nonWeekdayCells.every(cell => !cell.isSelected)
+      return allWeekdaysSelected && noNonWeekdaysSelected
+    } else {
+      // 掛け持ちモードの場合は現在のジョブで選択されているか
+      const allWeekdaysSelected = weekdayCells.length > 0 && weekdayCells.every(cell => {
+        const jobIds = store.getJobsForDate(cell.dateString)
+        return jobIds.includes(store.currentJobId!)
+      })
+      const noNonWeekdaysSelected = nonWeekdayCells.every(cell => {
+        const jobIds = store.getJobsForDate(cell.dateString)
+        return !jobIds.includes(store.currentJobId!)
+      })
+      return allWeekdaysSelected && noNonWeekdaysSelected
+    }
   })
 
   return {

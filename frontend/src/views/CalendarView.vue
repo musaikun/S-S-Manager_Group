@@ -5,6 +5,11 @@
 
     <!-- カレンダーカード -->
       <div class="calendar-card">
+        <!-- 選択中ジョブバナー -->
+        <div v-if="store.currentJobId !== null" class="current-job-banner" :style="{ backgroundColor: getCurrentJobColor() }">
+          <span class="banner-text">{{ getCurrentJobName() }}で選択しています</span>
+        </div>
+
         <!-- ヘッダー：年月 -->
         <div class="calendar-header">
           <h1 class="current-month">{{ currentMonthInfo.displayText }}</h1>
@@ -20,21 +25,8 @@
           </button>
         </div>
 
-        <!-- グループ化設定アコーディオン -->
-        <div class="grouping-section">
-          <div class="grouping-header" @click="toggleGrouping">
-            <span class="grouping-title">掛け持ち設定</span>
-            <div class="grouping-controls">
-              <button @click.stop="showGroupingHelp" class="help-icon-btn">?</button>
-              <span class="accordion-icon">{{ isGroupingOpen ? '▲' : '▼' }}</span>
-            </div>
-          </div>
-          <transition name="accordion">
-            <div v-show="isGroupingOpen" class="grouping-content">
-              <p class="grouping-note">※掛け持ち機能は準備中です</p>
-            </div>
-          </transition>
-        </div>
+        <!-- 掛け持ち設定アコーディオン -->
+        <JobManager />
 
         <!-- アクションボタン：休日基準で選択・平日のみ選択・クリア -->
         <div class="action-buttons">
@@ -96,6 +88,15 @@
             @click="handleDateClick(cell)"
           >
             <div class="date-number">{{ cell.date.getDate() }}</div>
+            <!-- ジョブドット表示 -->
+            <div v-if="getJobDotsForDate(cell.dateString).length > 0" class="job-dots">
+              <span
+                v-for="jobId in getJobDotsForDate(cell.dateString)"
+                :key="jobId"
+                class="job-dot"
+                :style="{ backgroundColor: getJobColor(jobId) }"
+              ></span>
+            </div>
           </div>
         </div>
 
@@ -108,19 +109,6 @@
         </div>
       </div>
 
-    <!-- グループ化ヘルプモーダル -->
-    <Teleport to="body">
-      <div v-if="showGroupingHelpModal" class="modal-overlay" @click="closeGroupingHelp">
-        <div class="modal-content help-modal" @click.stop>
-          <h3 class="modal-title">グループ化設定について</h3>
-          <div class="help-content">
-            <p>グループ化機能は現在準備中です。</p>
-            <p>将来的に、日付をグループ分けして管理できる機能を追加予定です。</p>
-          </div>
-          <button @click="closeGroupingHelp" class="close-btn">閉じる</button>
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>
 
@@ -132,6 +120,7 @@ import { useCalendarStore } from '../stores/calendar'
 import { useTimeRegisterStore } from '../stores/timeRegister'
 import type { CalendarCell } from '../types/calendar'
 import SwipeTutorial from '../components/SwipeTutorial.vue'
+import JobManager from '../components/JobManager.vue'
 
 const store = useCalendarStore()
 const timeRegisterStore = useTimeRegisterStore()
@@ -164,23 +153,6 @@ const { fetchHolidaysWithCache, holidays: holidaysData } = useHolidays()
 
 // ローカル状態
 const weekdays = ['日', '月', '火', '水', '木', '金', '土']
-const isGroupingOpen = ref(false)
-const showGroupingHelpModal = ref(false)
-
-// グループ化アコーディオンのトグル
-const toggleGrouping = () => {
-  isGroupingOpen.value = !isGroupingOpen.value
-}
-
-// グループ化ヘルプモーダルを表示
-const showGroupingHelp = () => {
-  showGroupingHelpModal.value = true
-}
-
-// グループ化ヘルプモーダルを閉じる
-const closeGroupingHelp = () => {
-  showGroupingHelpModal.value = false
-}
 
 // 今月・来月の判定
 const isThisMonth = computed(() => {
@@ -196,6 +168,9 @@ onMounted(async () => {
   // 祝日データを取得してストアに保存
   await fetchHolidaysWithCache()
   store.setHolidays(holidaysData.value)
+
+  // ジョブデータをLocalStorageから読み込み
+  store.loadJobsFromLocalStorage()
 })
 
 // イベントハンドラ
@@ -270,6 +245,31 @@ const hasTimeSettings = (dateString: string): boolean => {
   return workDay.startTimeSetBy !== 'default' || workDay.endTimeSetBy !== 'default'
 }
 
+// 指定した日付に設定されているジョブIDの配列を取得
+const getJobDotsForDate = (dateString: string) => {
+  return store.getJobsForDate(dateString)
+}
+
+// 指定したジョブIDの色を取得
+const getJobColor = (jobId: number) => {
+  const job = store.getJobById(jobId as any)
+  return job?.color || '#999'
+}
+
+// 現在選択中のジョブ名を取得
+const getCurrentJobName = () => {
+  if (store.currentJobId === null) return ''
+  const job = store.getJobById(store.currentJobId)
+  return job?.name || ''
+}
+
+// 現在選択中のジョブの色を取得
+const getCurrentJobColor = () => {
+  if (store.currentJobId === null) return 'transparent'
+  const job = store.getJobById(store.currentJobId)
+  return job?.color || '#999'
+}
+
 // 休日基準で選択（確認付き）
 const handleSelectAll = () => {
   // 選択を解除する日付を確認
@@ -326,7 +326,13 @@ const handleClearAll = () => {
     }
   }
 
-  clearAll()
+  // すべての日付をクリア（掛け持ち設定も含む）
+  store.selectedDates.clear()
+  store.dateJobMap = {}
+
+  // 時間登録の状態もクリア
+  timeRegisterStore.workDays = []
+  timeRegisterStore.remarks = ''
 }
 
 // 曜日別選択（確認付き）
@@ -373,6 +379,42 @@ const handleSelectByWeekday = (dayOfWeek: number) => {
   padding: 1rem;
   margin-bottom: 1rem;
   animation: fadeIn 0.5s ease-in;
+  position: relative;
+}
+
+/* 選択中ジョブバナー */
+.current-job-banner {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 0.75rem 1.5rem;
+  margin: -1rem -1rem 1rem -1rem;
+  border-radius: 16px 16px 0 0;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.banner-text {
+  color: white;
+  font-weight: bold;
+  font-size: 1.1rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.5px;
 }
 
 @keyframes fadeIn {
@@ -759,6 +801,26 @@ const handleSelectByWeekday = (dayOfWeek: number) => {
 .date-number {
   font-size: 1.125rem;
   font-weight: 600;
+}
+
+/* ジョブドット表示 */
+.job-dots {
+  position: absolute;
+  bottom: 0.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.2rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.job-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
 }
 
 /* レスポンシブ */

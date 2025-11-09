@@ -2,7 +2,7 @@
  * 時間登録関連の型定義
  */
 
-import type { DateString, DayOfWeek } from './calendar'
+import type { DateString, DayOfWeek, JobId } from './calendar'
 
 /**
  * 時刻（HH:MM形式）
@@ -55,6 +55,8 @@ export interface WorkDay {
   startTimeSetBy: 'default' | 'bulk' | 'custom' | 'base'
   /** 終了時刻の設定方法 */
   endTimeSetBy: 'default' | 'bulk' | 'custom' | 'base'
+  /** ジョブID（掛け持ち機能使用時） */
+  jobId?: JobId
 }
 
 /**

@@ -10,7 +10,7 @@ import type {
   TimePickerMode,
   TimeString
 } from '../types/timeRegister'
-import type { DateString } from '../types/calendar'
+import type { DateString, DateJobMap, JobId } from '../types/calendar'
 
 // LocalStorageからデフォルト時刻を読み込む
 const loadDefaultTimes = () => {
@@ -115,6 +115,25 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
      */
     unmodifiedWorkDays: (state): WorkDay[] => {
       return state.workDays.filter(day => !day.isModified && !day.isRemoved)
+    },
+
+    /**
+     * ジョブごとにグループ化されたWorkDays
+     * { jobId: WorkDay[], ... } の形式
+     * jobIdがundefinedの場合は "none" キーに格納
+     */
+    workDaysByJob: (state): Record<string, WorkDay[]> => {
+      const grouped: Record<string, WorkDay[]> = {}
+
+      state.workDays.forEach(day => {
+        const key = day.jobId?.toString() || 'none'
+        if (!grouped[key]) {
+          grouped[key] = []
+        }
+        grouped[key].push(day)
+      })
+
+      return grouped
     }
   },
 
@@ -122,65 +141,30 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
     /**
      * カレンダーから選択された日付を設定
      */
-    initializeFromDates(dates: DateString[]) {
-      this.workDays = dates.map((date, index) => {
-        const dateObj = new Date(date)
-        const dayOfWeek = dateObj.getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6
-        const weekNumber = getWeekNumber(date)
+    initializeFromDates(dates: DateString[], dateJobMap: DateJobMap = {}) {
+      // デフォルト時刻を取得（一括設定ではなく、常にヘッダー設定の時刻を使用）
+      const defaultTimes = loadDefaultTimes()
 
-        return {
-          date,
-          dayOfWeek,
-          weekNumber,
-          startTime: this.bulkSettings.startTime,
-          endTime: this.bulkSettings.endTime,
-          initialStartTime: this.bulkSettings.startTime,
-          initialEndTime: this.bulkSettings.endTime,
-          workMinutes: calculateWorkMinutes(this.bulkSettings.startTime, this.bulkSettings.endTime),
-          isModified: false,
-          isRemoved: false,
-          displayDate: formatDisplayDate(dateObj, dayOfWeek),
-          customStartTime: false,
-          customEndTime: false,
-          isBulkApplied: false,
-          isFromBase: false,
-          startTimeSetBy: 'default',
-          endTimeSetBy: 'default'
-        }
-      })
-    },
+      // dateJobMapから日付ごとのjobIdを展開してWorkDayを作成
+      const workDaysList: WorkDay[] = []
 
-    /**
-     * カレンダーの選択状態と同期（個別設定を保持）
-     */
-    syncWithSelectedDates(dates: DateString[]) {
-      // 既存のworkDaysを日付でマップ化
-      const existingWorkDaysMap = new Map(
-        this.workDays.map(wd => [wd.date, wd])
-      )
+      dates.forEach(date => {
+        const jobIds = dateJobMap[date] || [undefined as any]
 
-      // 新しいworkDaysを作成
-      this.workDays = dates.map(date => {
-        const existing = existingWorkDaysMap.get(date)
-
-        if (existing) {
-          // 既存の設定を保持
-          return existing
-        } else {
-          // 新しく追加された日付
+        jobIds.forEach(jobId => {
           const dateObj = new Date(date)
           const dayOfWeek = dateObj.getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6
           const weekNumber = getWeekNumber(date)
 
-          return {
+          workDaysList.push({
             date,
             dayOfWeek,
             weekNumber,
-            startTime: this.bulkSettings.startTime,
-            endTime: this.bulkSettings.endTime,
-            initialStartTime: this.bulkSettings.startTime,
-            initialEndTime: this.bulkSettings.endTime,
-            workMinutes: calculateWorkMinutes(this.bulkSettings.startTime, this.bulkSettings.endTime),
+            startTime: defaultTimes.startTime,
+            endTime: defaultTimes.endTime,
+            initialStartTime: defaultTimes.startTime,
+            initialEndTime: defaultTimes.endTime,
+            workMinutes: calculateWorkMinutes(defaultTimes.startTime, defaultTimes.endTime),
             isModified: false,
             isRemoved: false,
             displayDate: formatDisplayDate(dateObj, dayOfWeek),
@@ -189,10 +173,70 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
             isBulkApplied: false,
             isFromBase: false,
             startTimeSetBy: 'default',
-            endTimeSetBy: 'default'
-          }
-        }
+            endTimeSetBy: 'default',
+            jobId: jobId || undefined
+          })
+        })
       })
+
+      this.workDays = workDaysList
+    },
+
+    /**
+     * カレンダーの選択状態と同期（個別設定を保持）
+     */
+    syncWithSelectedDates(dates: DateString[], dateJobMap: DateJobMap = {}) {
+      // デフォルト時刻を取得（一括設定ではなく、常にヘッダー設定の時刻を使用）
+      const defaultTimes = loadDefaultTimes()
+
+      // 既存のworkDaysを日付+jobIdでマップ化
+      const existingWorkDaysMap = new Map(
+        this.workDays.map(wd => [`${wd.date}_${wd.jobId || 'none'}`, wd])
+      )
+
+      const workDaysList: WorkDay[] = []
+
+      dates.forEach(date => {
+        const jobIds = dateJobMap[date] || [undefined as any]
+
+        jobIds.forEach(jobId => {
+          const key = `${date}_${jobId || 'none'}`
+          const existing = existingWorkDaysMap.get(key)
+
+          if (existing) {
+            // 既存の設定を保持
+            workDaysList.push(existing)
+          } else {
+            // 新しく追加された日付（常にデフォルト時刻を使用）
+            const dateObj = new Date(date)
+            const dayOfWeek = dateObj.getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6
+            const weekNumber = getWeekNumber(date)
+
+            workDaysList.push({
+              date,
+              dayOfWeek,
+              weekNumber,
+              startTime: defaultTimes.startTime,
+              endTime: defaultTimes.endTime,
+              initialStartTime: defaultTimes.startTime,
+              initialEndTime: defaultTimes.endTime,
+              workMinutes: calculateWorkMinutes(defaultTimes.startTime, defaultTimes.endTime),
+              isModified: false,
+              isRemoved: false,
+              displayDate: formatDisplayDate(dateObj, dayOfWeek),
+              customStartTime: false,
+              customEndTime: false,
+              isBulkApplied: false,
+              isFromBase: false,
+              startTimeSetBy: 'default',
+              endTimeSetBy: 'default',
+              jobId: jobId || undefined
+            })
+          }
+        })
+      })
+
+      this.workDays = workDaysList
     },
 
     /**
