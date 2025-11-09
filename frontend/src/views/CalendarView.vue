@@ -7,7 +7,7 @@
       <div class="calendar-card">
         <!-- 選択中ジョブバナー -->
         <div class="current-job-banner" :style="{ backgroundColor: getCurrentJobColor() }">
-          <span class="banner-text">{{ getCurrentJobName() }}で選択しています</span>
+          <span class="banner-text" :style="{ color: getCurrentJobTextColor() }">{{ getCurrentJobName() }}で選択しています</span>
         </div>
 
         <!-- ヘッダー：年月 -->
@@ -251,12 +251,16 @@ const getJobDotsForDate = (dateString: string) => {
   const jobIds = store.getJobsForDate(dateString)
   const isSelected = store.selectedDates.has(dateString)
 
-  // 選択されているけどジョブIDがない場合は、本店のみ（null を配列に追加）
-  if (isSelected && jobIds.length === 0) {
-    return [null] as any[]
+  if (!isSelected) {
+    return jobIds  // 本店未選択の場合は掛け持ち先のみ（通常は空配列）
   }
 
-  return jobIds
+  // 本店が選択されている場合
+  if (jobIds.length === 0) {
+    return [null] as any[]  // 本店のみ
+  } else {
+    return [null, ...jobIds] as any[]  // 本店 + 掛け持ち先の両方を表示
+  }
 }
 
 // 指定したジョブIDの色を取得（本店の場合は白）
@@ -284,6 +288,14 @@ const getCurrentJobColor = () => {
   }
   const job = store.getJobById(store.currentJobId)
   return job?.color || '#999'
+}
+
+// 現在選択中のジョブの文字色を取得
+const getCurrentJobTextColor = () => {
+  if (store.currentJobId === null) {
+    return '#000000' // 本店（白背景）は黒文字
+  }
+  return '#000000' // 掛け持ち先（蛍光色背景）も黒文字
 }
 
 // 休日基準で選択（確認付き）
@@ -426,7 +438,7 @@ const handleSelectByWeekday = (dayOfWeek: number) => {
 }
 
 .banner-text {
-  color: white;
+  /* color is set dynamically via :style */
   font-weight: bold;
   font-size: 1.1rem;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);

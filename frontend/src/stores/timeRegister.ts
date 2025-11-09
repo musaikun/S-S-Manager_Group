@@ -43,6 +43,7 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
         startTime: defaultTimes.startTime,
         endTime: defaultTimes.endTime
       },
+      jobDefaultTimes: {},
       includeBreak: false,
       remarks: '',
       showSubmitModal: false,
@@ -207,8 +208,8 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
             const workDay1 = workDays[i]
             const workDay2 = workDays[j]
 
-            // 配列要素の存在とjobIdのチェック
-            if (!workDay1 || !workDay2 || !workDay1.jobId || !workDay2.jobId) {
+            // 配列要素の存在チェックのみ（jobIdチェックは不要 - checkTimeOverlapで行われる）
+            if (!workDay1 || !workDay2) {
               continue
             }
 
@@ -241,7 +242,7 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
     /**
      * カレンダーから選択された日付を設定
      */
-    initializeFromDates(dates: DateString[], dateJobMap: DateJobMap = {}) {
+    initializeFromDates(dates: DateString[], dateJobMap: DateJobMap = {}, selectedDates: Set<DateString> = new Set()) {
       // デフォルト時刻を取得（一括設定ではなく、常にヘッダー設定の時刻を使用）
       const defaultTimes = loadDefaultTimes()
 
@@ -249,22 +250,40 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
       const workDaysList: WorkDay[] = []
 
       dates.forEach(date => {
-        const jobIds = dateJobMap[date] || [undefined as any]
+        const jobIds = dateJobMap[date] || []
+        const allJobIds: (JobId | undefined)[] = []
 
-        jobIds.forEach(jobId => {
+        // selectedDatesに含まれている場合のみメインを追加
+        if (selectedDates.has(date)) {
+          allJobIds.push(undefined)
+        }
+
+        // 掛け持ち先を追加
+        allJobIds.push(...jobIds)
+
+        allJobIds.forEach(jobId => {
           const dateObj = new Date(date)
           const dayOfWeek = dateObj.getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6
           const weekNumber = getWeekNumber(date)
+
+          // jobIdに応じたデフォルト時刻を取得
+          let jobTimes = defaultTimes
+          if (jobId !== undefined) {
+            const jobKey = jobId.toString()
+            if (this.jobDefaultTimes[jobKey]) {
+              jobTimes = this.jobDefaultTimes[jobKey]
+            }
+          }
 
           workDaysList.push({
             date,
             dayOfWeek,
             weekNumber,
-            startTime: defaultTimes.startTime,
-            endTime: defaultTimes.endTime,
-            initialStartTime: defaultTimes.startTime,
-            initialEndTime: defaultTimes.endTime,
-            workMinutes: calculateWorkMinutes(defaultTimes.startTime, defaultTimes.endTime),
+            startTime: jobTimes.startTime,
+            endTime: jobTimes.endTime,
+            initialStartTime: jobTimes.startTime,
+            initialEndTime: jobTimes.endTime,
+            workMinutes: calculateWorkMinutes(jobTimes.startTime, jobTimes.endTime),
             isModified: false,
             isRemoved: false,
             displayDate: formatDisplayDate(dateObj, dayOfWeek),
@@ -285,7 +304,7 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
     /**
      * カレンダーの選択状態と同期（個別設定を保持）
      */
-    syncWithSelectedDates(dates: DateString[], dateJobMap: DateJobMap = {}) {
+    syncWithSelectedDates(dates: DateString[], dateJobMap: DateJobMap = {}, selectedDates: Set<DateString> = new Set()) {
       // デフォルト時刻を取得（一括設定ではなく、常にヘッダー設定の時刻を使用）
       const defaultTimes = loadDefaultTimes()
 
@@ -297,9 +316,18 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
       const workDaysList: WorkDay[] = []
 
       dates.forEach(date => {
-        const jobIds = dateJobMap[date] || [undefined as any]
+        const jobIds = dateJobMap[date] || []
+        const allJobIds: (JobId | undefined)[] = []
 
-        jobIds.forEach(jobId => {
+        // selectedDatesに含まれている場合のみメインを追加
+        if (selectedDates.has(date)) {
+          allJobIds.push(undefined)
+        }
+
+        // 掛け持ち先を追加
+        allJobIds.push(...jobIds)
+
+        allJobIds.forEach(jobId => {
           const key = `${date}_${jobId || 'none'}`
           const existing = existingWorkDaysMap.get(key)
 
@@ -307,20 +335,29 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
             // 既存の設定を保持
             workDaysList.push(existing)
           } else {
-            // 新しく追加された日付（常にデフォルト時刻を使用）
+            // 新しく追加された日付（jobIdに応じたデフォルト時刻を使用）
             const dateObj = new Date(date)
             const dayOfWeek = dateObj.getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6
             const weekNumber = getWeekNumber(date)
+
+            // jobIdに応じたデフォルト時刻を取得
+            let jobTimes = defaultTimes
+            if (jobId !== undefined) {
+              const jobKey = jobId.toString()
+              if (this.jobDefaultTimes[jobKey]) {
+                jobTimes = this.jobDefaultTimes[jobKey]
+              }
+            }
 
             workDaysList.push({
               date,
               dayOfWeek,
               weekNumber,
-              startTime: defaultTimes.startTime,
-              endTime: defaultTimes.endTime,
-              initialStartTime: defaultTimes.startTime,
-              initialEndTime: defaultTimes.endTime,
-              workMinutes: calculateWorkMinutes(defaultTimes.startTime, defaultTimes.endTime),
+              startTime: jobTimes.startTime,
+              endTime: jobTimes.endTime,
+              initialStartTime: jobTimes.startTime,
+              initialEndTime: jobTimes.endTime,
+              workMinutes: calculateWorkMinutes(jobTimes.startTime, jobTimes.endTime),
               isModified: false,
               isRemoved: false,
               displayDate: formatDisplayDate(dateObj, dayOfWeek),
@@ -417,6 +454,39 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
       this.bulkSettings = {
         ...this.bulkSettings,
         ...settings
+      }
+    },
+
+    /**
+     * 掛け持ち先ごとのデフォルト時刻を更新
+     */
+    updateJobDefaultTimes(jobId: JobId, settings: Partial<BulkSettings>) {
+      const jobKey = jobId.toString()
+      const currentSettings = this.jobDefaultTimes[jobKey] || {
+        startTime: this.bulkSettings.startTime,
+        endTime: this.bulkSettings.endTime
+      }
+      this.jobDefaultTimes[jobKey] = {
+        ...currentSettings,
+        ...settings
+      }
+      this.saveJobDefaultTimes()
+    },
+
+    /**
+     * 掛け持ち先デフォルト時刻をLocalStorageに保存
+     */
+    saveJobDefaultTimes() {
+      localStorage.setItem('jobDefaultTimes', JSON.stringify(this.jobDefaultTimes))
+    },
+
+    /**
+     * 掛け持ち先デフォルト時刻をLocalStorageから読み込み
+     */
+    loadJobDefaultTimes() {
+      const saved = localStorage.getItem('jobDefaultTimes')
+      if (saved) {
+        this.jobDefaultTimes = JSON.parse(saved)
       }
     },
 

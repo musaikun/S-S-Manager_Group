@@ -9,6 +9,7 @@
           <span class="job-name">{{ group.job.name }}</span>
         </div>
         <div v-else class="job-group-header no-job">
+          <span class="job-color-indicator main-store-indicator"></span>
           <span class="job-name">{{ calendarStore.mainStoreDisplayName }}</span>
         </div>
 
@@ -72,6 +73,10 @@
               class="job-stat-dot"
               :style="{ backgroundColor: calendarStore.getJobById(summary.jobId)?.color }"
             ></span>
+            <span
+              v-else
+              class="job-stat-dot main-store-stat-dot"
+            ></span>
             <span class="job-stat-compact-name">
               {{ summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : calendarStore.mainStoreDisplayName }}
             </span>
@@ -128,6 +133,10 @@
                   v-if="summary.jobId"
                   class="job-selection-indicator"
                   :style="{ backgroundColor: calendarStore.getJobById(summary.jobId)?.color }"
+                ></span>
+                <span
+                  v-else
+                  class="job-selection-indicator main-store-selection-indicator"
                 ></span>
                 <span class="job-selection-label">
                   {{ summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : calendarStore.mainStoreDisplayName }}
@@ -555,10 +564,18 @@ const copyToClipboard = async () => {
 const initializeWorkDaysIfNeeded = () => {
   const selectedDates = Array.from(calendarStore.selectedDates)
   const dateJobMap = calendarStore.dateJobMap
+  const selectedDatesSet = calendarStore.selectedDates
+
+  // すべての日付を統合（メイン選択 + 掛け持ち選択）
+  const allDates = new Set([
+    ...selectedDates,
+    ...Object.keys(dateJobMap)
+  ])
+  const allDatesArray = Array.from(allDates).sort()
 
   // workDaysが空で、カレンダーで日付が選択されている場合は初期化
-  if (timeRegisterStore.workDays.length === 0 && selectedDates.length > 0) {
-    timeRegisterStore.initializeFromDates(selectedDates, dateJobMap)
+  if (timeRegisterStore.workDays.length === 0 && allDatesArray.length > 0) {
+    timeRegisterStore.initializeFromDates(allDatesArray, dateJobMap, selectedDatesSet)
   }
 }
 
@@ -812,6 +829,12 @@ onMounted(() => {
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+.main-store-stat-dot {
+  background-color: #FFFFFF;
+  border: 1.5px solid #666;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
 }
 
 .job-stat-compact-name {
@@ -1086,6 +1109,12 @@ onMounted(() => {
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
 }
 
+.main-store-selection-indicator {
+  background-color: #FFFFFF;
+  border: 1.5px solid #666;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
 .job-selection-label {
   flex: 1;
   font-size: 1rem;
@@ -1168,6 +1197,12 @@ onMounted(() => {
   height: 12px;
   border-radius: 50%;
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.main-store-indicator {
+  background-color: #FFFFFF;
+  border: 1.5px solid #666;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
 }
 
 .job-name {
