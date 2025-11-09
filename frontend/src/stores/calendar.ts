@@ -252,6 +252,9 @@ export const useCalendarStore = defineStore('calendar', {
           })
         }
       }
+
+      // LocalStorageに保存
+      this.saveJobsToLocalStorage()
     },
 
     /**
@@ -275,6 +278,9 @@ export const useCalendarStore = defineStore('calendar', {
           }
         })
       }
+
+      // LocalStorageに保存
+      this.saveJobsToLocalStorage()
     },
 
     /**
@@ -332,6 +338,9 @@ export const useCalendarStore = defineStore('calendar', {
           })
         }
       }
+
+      // LocalStorageに保存
+      this.saveJobsToLocalStorage()
     },
 
     /**
