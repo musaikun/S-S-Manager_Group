@@ -208,8 +208,8 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
             const workDay1 = workDays[i]
             const workDay2 = workDays[j]
 
-            // 配列要素の存在とjobIdのチェック
-            if (!workDay1 || !workDay2 || !workDay1.jobId || !workDay2.jobId) {
+            // 配列要素の存在チェックのみ（jobIdチェックは不要 - checkTimeOverlapで行われる）
+            if (!workDay1 || !workDay2) {
               continue
             }
 
