@@ -144,32 +144,77 @@
 
     <!-- 提出方法選択モーダル -->
     <Teleport to="body">
-      <div v-if="showSubmitModal" class="modal-overlay" @click="timeRegisterStore.closeSubmitModal()">
+      <div v-if="showSubmitModal" class="modal-overlay" @click="closeSubmitModal">
         <div class="modal-content submit-modal" @click.stop>
-          <h3 class="modal-title">提出方法を選択</h3>
-          <div class="submit-methods">
-            <button @click="saveOnly" class="method-btn save-btn">
-              <span class="method-icon">💾</span>
-              <span class="method-label">保存のみ</span>
-            </button>
-            <button @click="submitViaEmail" class="method-btn email-btn">
-              <span class="method-icon">📧</span>
-              <span class="method-label">メールで送信</span>
-            </button>
-            <button @click="submitViaLine" class="method-btn line-btn">
-              <span class="method-icon">💬</span>
-              <span class="method-label">LINEで送信</span>
-            </button>
-            <button @click="downloadCSV" class="method-btn csv-btn">
-              <span class="method-icon">📊</span>
-              <span class="method-label">CSVダウンロード</span>
-            </button>
-            <button @click="copyToClipboard" class="method-btn copy-btn">
-              <span class="method-icon">📋</span>
-              <span class="method-label">コピーする</span>
-            </button>
+          <!-- ステップ1: ジョブ選択（複数ジョブの場合のみ） -->
+          <div v-if="submitStep === 'job-selection' && hasMultipleJobs">
+            <h3 class="modal-title">提出する掛け持ち先を選択</h3>
+            <div class="job-selection-list">
+              <button
+                @click="selectJobForSubmit('all')"
+                class="job-selection-btn"
+                :class="{ selected: selectedJobForSubmit === 'all' }"
+              >
+                <span class="job-selection-icon">📊</span>
+                <span class="job-selection-label">すべての掛け持ち先</span>
+                <span class="job-selection-count">{{ activeWorkDays.length }}件</span>
+              </button>
+              <button
+                v-for="summary in jobSummaries"
+                :key="summary.jobId || 'none'"
+                @click="selectJobForSubmit(summary.jobId)"
+                class="job-selection-btn"
+                :class="{ selected: selectedJobForSubmit === summary.jobId }"
+              >
+                <span
+                  v-if="summary.jobId"
+                  class="job-selection-indicator"
+                  :style="{ backgroundColor: calendarStore.getJobById(summary.jobId)?.color }"
+                ></span>
+                <span class="job-selection-label">
+                  {{ summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : '掛け持ちなし' }}
+                </span>
+                <span class="job-selection-count">{{ summary.workDays }}日</span>
+              </button>
+            </div>
+            <div class="modal-buttons-row">
+              <button @click="closeSubmitModal" class="close-modal-btn">キャンセル</button>
+              <button @click="submitStep = 'method'" class="continue-btn">次へ</button>
+            </div>
           </div>
-          <button @click="timeRegisterStore.closeSubmitModal()" class="close-modal-btn">キャンセル</button>
+
+          <!-- ステップ2: 提出方法選択 -->
+          <div v-else>
+            <h3 class="modal-title">
+              {{ getSubmitTitle() }}
+            </h3>
+            <div class="submit-methods">
+              <button @click="saveOnly" class="method-btn save-btn">
+                <span class="method-icon">💾</span>
+                <span class="method-label">保存のみ</span>
+              </button>
+              <button @click="submitViaEmail" class="method-btn email-btn">
+                <span class="method-icon">📧</span>
+                <span class="method-label">メールで送信</span>
+              </button>
+              <button @click="submitViaLine" class="method-btn line-btn">
+                <span class="method-icon">💬</span>
+                <span class="method-label">LINEで送信</span>
+              </button>
+              <button @click="downloadCSV" class="method-btn csv-btn">
+                <span class="method-icon">📊</span>
+                <span class="method-label">CSVダウンロード</span>
+              </button>
+              <button @click="copyToClipboard" class="method-btn copy-btn">
+                <span class="method-icon">📋</span>
+                <span class="method-label">コピーする</span>
+              </button>
+            </div>
+            <div class="modal-buttons-row">
+              <button v-if="hasMultipleJobs" @click="submitStep = 'job-selection'" class="back-btn">戻る</button>
+              <button @click="closeSubmitModal" class="close-modal-btn">キャンセル</button>
+            </div>
+          </div>
         </div>
       </div>
     </Teleport>
@@ -177,7 +222,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useTimeRegisterStore } from '../stores/timeRegister'
 import { useCalendarStore } from '../stores/calendar'
@@ -185,6 +230,7 @@ import { useTimeFormat } from '../composables/useTimeFormat'
 import { useTimeCalculation } from '../composables/useTimeCalculation'
 import { useHolidays } from '../composables/useHolidays'
 import type { WorkDay } from '../types/timeRegister'
+import type { JobId } from '../types/calendar'
 
 const timeRegisterStore = useTimeRegisterStore()
 const calendarStore = useCalendarStore()
@@ -195,6 +241,10 @@ const { totalSummary, jobSummaries } = storeToRefs(timeRegisterStore)
 
 const { formatMinutesToHours } = useTimeFormat()
 const { calculateBreakTime } = useTimeCalculation()
+
+// 提出用のジョブ選択状態
+const selectedJobForSubmit = ref<JobId | null | 'all'>('all')
+const submitStep = ref<'job-selection' | 'method'>('job-selection')
 
 // アクティブな勤務日（削除されていない）
 const activeWorkDays = computed(() => {
@@ -240,6 +290,45 @@ const uniqueDatesCount = computed(() => {
 const hasMultipleJobs = computed(() => {
   return jobSummaries.value.length > 1
 })
+
+// 提出対象のWorkDays（選択されたジョブのみ）
+const workDaysForSubmit = computed(() => {
+  if (selectedJobForSubmit.value === 'all') {
+    return activeWorkDays.value
+  }
+  return activeWorkDays.value.filter(wd => wd.jobId === selectedJobForSubmit.value)
+})
+
+// ジョブを選択
+const selectJobForSubmit = (jobId: JobId | null | 'all' | undefined) => {
+  if (jobId === undefined) {
+    selectedJobForSubmit.value = null
+  } else {
+    selectedJobForSubmit.value = jobId as JobId | null | 'all'
+  }
+}
+
+// 提出モーダルのタイトルを取得
+const getSubmitTitle = (): string => {
+  if (selectedJobForSubmit.value === 'all') {
+    return '提出方法を選択'
+  }
+  if (selectedJobForSubmit.value === null) {
+    return '提出方法を選択（掛け持ちなし）'
+  }
+  const job = calendarStore.getJobById(selectedJobForSubmit.value)
+  return `提出方法を選択（${job?.name || '不明'}）`
+}
+
+// モーダルを閉じる
+const closeSubmitModal = () => {
+  timeRegisterStore.closeSubmitModal()
+  // モーダルを閉じる際にステップとジョブ選択をリセット
+  setTimeout(() => {
+    submitStep.value = hasMultipleJobs.value ? 'job-selection' : 'method'
+    selectedJobForSubmit.value = 'all'
+  }, 300)
+}
 
 // 勤務時間のフォーマット
 const formatWorkTime = (workDay: WorkDay) => {
@@ -347,10 +436,11 @@ const getStatusBadgeClass = (workDay: WorkDay) => {
 // シフトデータをLocalStorageに保存
 const saveShiftData = () => {
   const shiftData = {
-    workDays: activeWorkDays.value,
+    workDays: workDaysForSubmit.value,
     totalSummary: totalSummary.value,
     remarks: timeRegisterStore.remarks,
-    submittedAt: new Date().toISOString()
+    submittedAt: new Date().toISOString(),
+    jobId: selectedJobForSubmit.value !== 'all' ? selectedJobForSubmit.value : undefined
   }
 
   // LocalStorageに保存
@@ -363,37 +453,48 @@ const saveShiftData = () => {
 const generateShiftText = (): string => {
   let text = '【シフト提出】\n\n'
 
-  // 掛け持ち先ごとにグループ分け
-  workDaysByJob.value.forEach(group => {
-    if (group.job) {
-      text += `【${group.job.name}】\n`
-    } else if (jobSummaries.value.length > 1) {
-      text += `【掛け持ちなし】\n`
-    }
+  // 提出対象のジョブ名を表示
+  if (selectedJobForSubmit.value !== 'all') {
+    const jobName = selectedJobForSubmit.value === null
+      ? '掛け持ちなし'
+      : calendarStore.getJobById(selectedJobForSubmit.value)?.name
+    text += `【${jobName}】\n`
+  }
 
-    group.workDays.forEach(day => {
+  // ジョブごとにグループ分けして表示（'all'の場合のみ）
+  if (selectedJobForSubmit.value === 'all' && hasMultipleJobs.value) {
+    const filteredGroups = workDaysByJob.value.filter(group => {
+      return group.workDays.some(day => workDaysForSubmit.value.includes(day))
+    })
+
+    filteredGroups.forEach(group => {
+      if (group.job) {
+        text += `【${group.job.name}】\n`
+      } else {
+        text += `【掛け持ちなし】\n`
+      }
+
+      const groupDays = group.workDays.filter(day => workDaysForSubmit.value.includes(day))
+      groupDays.forEach(day => {
+        text += `${day.displayDate}: ${day.startTime}〜${day.endTime}\n`
+      })
+      text += '\n'
+    })
+  } else {
+    // 単一ジョブまたは掛け持ちなしの場合
+    workDaysForSubmit.value.forEach(day => {
       text += `${day.displayDate}: ${day.startTime}〜${day.endTime}\n`
     })
     text += '\n'
-  })
+  }
+
+  // 合計統計
+  const totalDays = workDaysForSubmit.value.length
+  const totalMinutes = workDaysForSubmit.value.reduce((sum, day) => sum + day.workMinutes, 0)
 
   text += `【合計】\n`
-  text += `勤務日数: ${totalSummary.value.workDays}日\n`
-  text += `総勤務時間: ${formatMinutesToHours(totalSummary.value.totalWorkMinutes)}\n`
-
-  // 掛け持ち先別統計
-  if (jobSummaries.value.length > 1) {
-    text += `\n【掛け持ち先別】\n`
-    jobSummaries.value.forEach(summary => {
-      const jobName = summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : '掛け持ちなし'
-      text += `${jobName}:\n`
-      text += `  勤務日数: ${summary.workDays}日\n`
-      text += `  総勤務時間: ${formatMinutesToHours(summary.totalWorkMinutes)}\n`
-      if (includeBreak.value) {
-        text += `  実労働時間: ${formatMinutesToHours(summary.totalActualWorkMinutes)}\n`
-      }
-    })
-  }
+  text += `勤務日数: ${totalDays}日\n`
+  text += `総勤務時間: ${formatMinutesToHours(totalMinutes)}\n`
 
   if (timeRegisterStore.remarks.trim()) {
     text += `\n【備考】\n${timeRegisterStore.remarks}\n`
@@ -405,8 +506,21 @@ const generateShiftText = (): string => {
 // 保存のみ
 const saveOnly = () => {
   saveShiftData()
-  timeRegisterStore.closeSubmitModal()
-  alert('シフトを保存しました')
+  closeSubmitModal()
+  const jobInfo = getJobInfoForAlert()
+  alert(`シフトを保存しました${jobInfo}`)
+}
+
+// アラート用のジョブ情報を取得
+const getJobInfoForAlert = (): string => {
+  if (selectedJobForSubmit.value === 'all') {
+    return ''
+  }
+  if (selectedJobForSubmit.value === null) {
+    return '（掛け持ちなし）'
+  }
+  const job = calendarStore.getJobById(selectedJobForSubmit.value)
+  return `（${job?.name || '不明'}）`
 }
 
 // メール送信
@@ -415,7 +529,7 @@ const submitViaEmail = () => {
   const body = encodeURIComponent(generateShiftText())
   window.location.href = `mailto:?subject=${subject}&body=${body}`
   saveShiftData()
-  timeRegisterStore.closeSubmitModal()
+  closeSubmitModal()
 }
 
 // LINE送信
@@ -423,14 +537,14 @@ const submitViaLine = () => {
   const text = encodeURIComponent(generateShiftText())
   window.open(`https://line.me/R/share?text=${text}`, '_blank')
   saveShiftData()
-  timeRegisterStore.closeSubmitModal()
+  closeSubmitModal()
 }
 
 // CSVダウンロード
 const downloadCSV = () => {
   let csv = '日付,開始時刻,終了時刻,勤務時間,実働時間,設定,掛け持ち先\n'
 
-  activeWorkDays.value.forEach(day => {
+  workDaysForSubmit.value.forEach(day => {
     const breakMinutes = calculateBreakTime(day.workMinutes)
     const actualMinutes = day.workMinutes - breakMinutes
     const status = getStatusText(day)
@@ -438,20 +552,16 @@ const downloadCSV = () => {
     csv += `${day.displayDate},${day.startTime},${day.endTime},${formatMinutesToHours(day.workMinutes)},${formatMinutesToHours(actualMinutes)},${status},${jobName}\n`
   })
 
-  csv += `\n合計\n`
-  csv += `勤務日数,${totalSummary.value.workDays}日\n`
-  csv += `総勤務時間,${formatMinutesToHours(totalSummary.value.totalWorkMinutes)}\n`
-  csv += `実働時間,${formatMinutesToHours(totalSummary.value.totalActualWorkMinutes)}\n`
+  // 合計統計
+  const totalDays = workDaysForSubmit.value.length
+  const totalMinutes = workDaysForSubmit.value.reduce((sum, day) => sum + day.workMinutes, 0)
+  const totalBreakMinutes = workDaysForSubmit.value.reduce((sum, day) => sum + calculateBreakTime(day.workMinutes), 0)
+  const totalActualMinutes = totalMinutes - totalBreakMinutes
 
-  // 掛け持ち先別統計
-  if (jobSummaries.value.length > 1) {
-    csv += `\n掛け持ち先別統計\n`
-    csv += `掛け持ち先,勤務日数,総勤務時間,実労働時間\n`
-    jobSummaries.value.forEach(summary => {
-      const jobName = summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : '掛け持ちなし'
-      csv += `${jobName},${summary.workDays}日,${formatMinutesToHours(summary.totalWorkMinutes)},${formatMinutesToHours(summary.totalActualWorkMinutes)}\n`
-    })
-  }
+  csv += `\n合計\n`
+  csv += `勤務日数,${totalDays}日\n`
+  csv += `総勤務時間,${formatMinutesToHours(totalMinutes)}\n`
+  csv += `実働時間,${formatMinutesToHours(totalActualMinutes)}\n`
 
   if (timeRegisterStore.remarks.trim()) {
     csv += `\n備考\n${timeRegisterStore.remarks}\n`
@@ -461,14 +571,15 @@ const downloadCSV = () => {
   const link = document.createElement('a')
   const url = URL.createObjectURL(blob)
   link.setAttribute('href', url)
-  link.setAttribute('download', `shift_${new Date().toISOString().split('T')[0]}.csv`)
+  const jobSuffix = selectedJobForSubmit.value !== 'all' ? `_${selectedJobForSubmit.value || 'none'}` : ''
+  link.setAttribute('download', `shift_${new Date().toISOString().split('T')[0]}${jobSuffix}.csv`)
   link.style.visibility = 'hidden'
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
 
   saveShiftData()
-  timeRegisterStore.closeSubmitModal()
+  closeSubmitModal()
 }
 
 // クリップボードにコピー
@@ -476,7 +587,7 @@ const copyToClipboard = async () => {
   try {
     await navigator.clipboard.writeText(generateShiftText())
     saveShiftData()
-    timeRegisterStore.closeSubmitModal()
+    closeSubmitModal()
   } catch (err) {
     console.error('クリップボードへのコピーに失敗:', err)
   }
@@ -1110,6 +1221,107 @@ onMounted(() => {
 }
 
 .close-modal-btn:hover {
+  background: #e0e0e0;
+}
+
+/* ジョブ選択リスト */
+.job-selection-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.job-selection-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+}
+
+.job-selection-btn:hover {
+  border-color: #667eea;
+  background: #f8f9ff;
+  transform: translateX(4px);
+}
+
+.job-selection-btn.selected {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #f8f9ff, #eff6ff);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.job-selection-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.job-selection-indicator {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.job-selection-label {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.job-selection-count {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #667eea;
+  background: #eff6ff;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+}
+
+/* モーダルボタン行 */
+.modal-buttons-row {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.continue-btn,
+.back-btn {
+  padding: 0.875rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.continue-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.continue-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.back-btn {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.back-btn:hover {
   background: #e0e0e0;
 }
 
