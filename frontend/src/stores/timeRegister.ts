@@ -558,6 +558,13 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
           return
         }
 
+        // 掛け持ち先フィルターが有効な場合はフィルタリング
+        if (this.selectedJobFilter !== null) {
+          if (day.jobId !== this.selectedJobFilter) {
+            return
+          }
+        }
+
         const updates: Partial<WorkDay> = {}
 
         if (type === 'both' || type === 'start') {

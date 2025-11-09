@@ -1,6 +1,24 @@
 <template>
   <div class="time-register-view">
-    <div class="time-register-container">
+    <div class="time-register-container" :style="getContainerBorderStyle()">
+      <!-- 掛け持ち先選択バナー -->
+      <div v-if="selectedJobFilter !== null" class="job-filter-banner" :style="getJobFilterBannerStyle()">
+        <div class="banner-content">
+          <div class="banner-left">
+            <span class="banner-icon">🎯</span>
+            <span class="banner-text">{{ getJobFilterName() }}</span>
+          </div>
+          <div class="banner-right">
+            <button v-if="hasMultipleJobs" @click="openJobSwitchModal" class="banner-btn switch-btn">
+              切替
+            </button>
+            <button v-if="selectedJobFilter !== undefined" @click="clearJobFilter" class="banner-btn clear-btn">
+              解除
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- 一括設定セクション（アコーディオン） -->
       <div class="bulk-settings-section">
         <div class="section-header accordion-header" @click="toggleBulkAccordion">
@@ -9,6 +27,11 @@
         </div>
         <transition name="accordion">
           <div v-show="isBulkAccordionOpen" class="bulk-settings-content">
+            <!-- 掛け持ち先フィルター適用時の注意書き -->
+            <div v-if="selectedJobFilter !== null" class="bulk-filter-notice">
+              ⚠️ 現在一括設定は<strong>{{ getJobFilterName() }}</strong>にのみ反映されます
+            </div>
+
             <div class="bulk-time-settings">
               <div class="bulk-time-item">
                 <button @click="openBulkTimeModal('start')" class="bulk-time-btn">
@@ -504,6 +527,41 @@
       </div>
     </Teleport>
 
+    <!-- 掛け持ち先切替モーダル -->
+    <Teleport to="body">
+      <div v-if="showJobSwitchModal" class="modal-overlay" @click="closeJobSwitchModal" @touchmove.prevent>
+        <div class="modal-content job-switch-modal" @click.stop @touchmove.stop>
+          <h3 class="modal-title">一括設定の対象を選択</h3>
+          <div class="job-switch-content">
+            <!-- メイン店舗 -->
+            <div
+              class="job-switch-item main-store-item"
+              @click="selectJobFilter(undefined)"
+              :class="{ selected: selectedJobFilter === undefined }"
+            >
+              <div class="job-switch-indicator main-store-indicator"></div>
+              <span class="job-switch-name">{{ calendarStore.mainStoreDisplayName }}</span>
+              <span v-if="selectedJobFilter === undefined" class="selected-badge">✓</span>
+            </div>
+
+            <!-- 掛け持ち先 -->
+            <div
+              v-for="job in calendarStore.activeJobs"
+              :key="job.id"
+              class="job-switch-item"
+              @click="selectJobFilter(job.id)"
+              :class="{ selected: selectedJobFilter === job.id }"
+            >
+              <div class="job-switch-indicator" :style="{ backgroundColor: job.color }"></div>
+              <span class="job-switch-name">{{ job.name }}</span>
+              <span v-if="selectedJobFilter === job.id" class="selected-badge">✓</span>
+            </div>
+          </div>
+          <button @click="closeJobSwitchModal" class="close-btn">閉じる</button>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- 時刻選択モーダル（Teleportでbody直下に配置） -->
     <Teleport to="body">
       <div v-if="showTimeModal" class="modal-overlay" @click="cancelTimeEdit" @touchmove.prevent>
@@ -656,7 +714,7 @@ const calendarStore = useCalendarStore()
 const timeRegisterStore = useTimeRegisterStore()
 const { isHoliday } = useHolidays()
 
-const { bulkSettings, includeBreak, workDays } = storeToRefs(timeRegisterStore)
+const { bulkSettings, includeBreak, workDays, selectedJobFilter } = storeToRefs(timeRegisterStore)
 const { totalSummary } = storeToRefs(timeRegisterStore)
 
 // 重複情報をストアから取得
@@ -743,7 +801,7 @@ const salaryByJob = ref<Record<string, { jobId: number | undefined; salary: numb
 const jobWages = ref<Record<string, number>>({}) // 掛け持ち先ごとの時給
 
 // モーダル状態をPageSliderに提供（スライド制御用）
-provide('isModalOpen', computed(() => showTimeModal.value || showConfirmModal.value || showHelpModal.value || showConflictModal.value || showOvertimeModal.value))
+provide('isModalOpen', computed(() => showTimeModal.value || showConfirmModal.value || showHelpModal.value || showConflictModal.value || showOvertimeModal.value || showJobSwitchModal.value))
 
 // アクティブな勤務日（削除されていない）
 const activeWorkDays = computed(() => {
@@ -891,6 +949,72 @@ const getJobColor = (jobId: JobId | undefined): string => {
     return '#FFFFFF' // メイン店舗は白
   }
   return calendarStore.getJobById(jobId)?.color || '#999'
+}
+
+// 掛け持ち先フィルターバナー関連
+const getJobFilterName = (): string => {
+  return getJobName(selectedJobFilter.value === null ? undefined : selectedJobFilter.value)
+}
+
+const getJobFilterBannerStyle = () => {
+  if (selectedJobFilter.value === null || selectedJobFilter.value === undefined) {
+    // メイン店舗の場合は薄いグレー背景
+    return {
+      background: 'linear-gradient(135deg, #f8f9fa, #e9ecef)',
+      borderLeft: '4px solid #6c757d'
+    }
+  }
+  // 掛け持ち先の場合は掛け持ち先の色
+  const color = getJobColor(selectedJobFilter.value)
+  return {
+    background: `linear-gradient(135deg, ${color}15, ${color}25)`,
+    borderLeft: `4px solid ${color}`
+  }
+}
+
+const getContainerBorderStyle = () => {
+  if (selectedJobFilter.value === null) {
+    // フィルター未選択時はボーダーなし
+    return {}
+  }
+
+  if (selectedJobFilter.value === undefined) {
+    // メイン店舗選択時は薄いグレーのボーダー
+    return {
+      border: '3px solid #6c757d',
+      boxShadow: '0 0 12px rgba(108, 117, 125, 0.3)'
+    }
+  }
+
+  // 掛け持ち先選択時は掛け持ち先の色のボーダー
+  const color = getJobColor(selectedJobFilter.value)
+  return {
+    border: `3px solid ${color}`,
+    boxShadow: `0 0 12px ${color}50`
+  }
+}
+
+const hasMultipleJobs = computed(() => {
+  return calendarStore.activeJobs.length > 0
+})
+
+const clearJobFilter = () => {
+  timeRegisterStore.clearSelectedJobFilter()
+}
+
+const showJobSwitchModal = ref(false)
+
+const openJobSwitchModal = () => {
+  showJobSwitchModal.value = true
+}
+
+const closeJobSwitchModal = () => {
+  showJobSwitchModal.value = false
+}
+
+const selectJobFilter = (jobId: JobId | undefined) => {
+  timeRegisterStore.setSelectedJobFilter(jobId)
+  closeJobSwitchModal()
 }
 
 // 開始時間ボタン配列（午前: 0-11、午後: 12-23）
@@ -1592,6 +1716,167 @@ const confirmTimeEdit = () => {
 .time-register-container {
   max-width: 800px;
   margin: 0 auto;
+}
+
+/* 掛け持ち先フィルターバナー */
+.job-filter-banner {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 12px;
+  padding: 0.875rem 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  border-left: 4px solid #6c757d;
+}
+
+.banner-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.banner-left {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.banner-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.banner-text {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.banner-right {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.banner-btn {
+  padding: 0.4rem 0.875rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.switch-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.switch-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.clear-btn {
+  background: #f8f9fa;
+  color: #666;
+  border: 1.5px solid #dee2e6;
+}
+
+.clear-btn:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+/* 一括設定フィルター注意書き */
+.bulk-filter-notice {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 152, 0, 0.15));
+  border-left: 4px solid #ffc107;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #856404;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bulk-filter-notice strong {
+  color: #d39e00;
+  font-weight: 700;
+}
+
+/* 掛け持ち先切替モーダル */
+.job-switch-modal {
+  max-width: 450px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.job-switch-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.job-switch-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: #f8f9fa;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.job-switch-item:hover {
+  background: #e9ecef;
+  transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.job-switch-item.main-store-item {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+}
+
+.job-switch-indicator {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.main-store-indicator {
+  background: white;
+  border: 2.5px solid #666;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+}
+
+.job-switch-name {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.selected-badge {
+  font-size: 1.25rem;
+  color: #10b981;
+  font-weight: 700;
 }
 
 /* 一括設定セクション */
