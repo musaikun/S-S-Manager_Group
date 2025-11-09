@@ -275,13 +275,13 @@ const createFromBase = () => {
   const currentYear = calendarStore.currentYear
   const currentMonth = calendarStore.currentMonth
 
-  // 確認ダイアログを表示
+  // 確認ダイアログを表示（キャンセル時は何もしない）
   const monthLabel = `${currentYear}年${currentMonth + 1}月`
   if (!confirm(`現在選択中の${monthLabel}に作成しますがよろしいですか？`)) {
     return
   }
 
-  // カレンダーの選択をクリア
+  // 確認後にカレンダーの選択をクリア
   calendarStore.selectedDates.clear()
   calendarStore.dateJobMap = {}
 
