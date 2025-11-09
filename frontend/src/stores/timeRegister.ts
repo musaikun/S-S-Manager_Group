@@ -249,9 +249,12 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
       const workDaysList: WorkDay[] = []
 
       dates.forEach(date => {
-        const jobIds = dateJobMap[date] || [undefined as any]
+        const jobIds = dateJobMap[date] || []
 
-        jobIds.forEach(jobId => {
+        // メイン(undefined) + 掛け持ち先のjobIdsを結合
+        const allJobIds: (JobId | undefined)[] = [undefined as any, ...jobIds]
+
+        allJobIds.forEach(jobId => {
           const dateObj = new Date(date)
           const dayOfWeek = dateObj.getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6
           const weekNumber = getWeekNumber(date)

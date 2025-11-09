@@ -9,6 +9,7 @@
           <span class="job-name">{{ group.job.name }}</span>
         </div>
         <div v-else class="job-group-header no-job">
+          <span class="job-color-indicator main-store-indicator"></span>
           <span class="job-name">{{ calendarStore.mainStoreDisplayName }}</span>
         </div>
 
@@ -72,6 +73,10 @@
               class="job-stat-dot"
               :style="{ backgroundColor: calendarStore.getJobById(summary.jobId)?.color }"
             ></span>
+            <span
+              v-else
+              class="job-stat-dot main-store-stat-dot"
+            ></span>
             <span class="job-stat-compact-name">
               {{ summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : calendarStore.mainStoreDisplayName }}
             </span>
@@ -128,6 +133,10 @@
                   v-if="summary.jobId"
                   class="job-selection-indicator"
                   :style="{ backgroundColor: calendarStore.getJobById(summary.jobId)?.color }"
+                ></span>
+                <span
+                  v-else
+                  class="job-selection-indicator main-store-selection-indicator"
                 ></span>
                 <span class="job-selection-label">
                   {{ summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : calendarStore.mainStoreDisplayName }}
@@ -814,6 +823,12 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
+.main-store-stat-dot {
+  background-color: #FFFFFF;
+  border: 1.5px solid #666;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
 .job-stat-compact-name {
   font-weight: 600;
   color: #555;
@@ -1086,6 +1101,12 @@ onMounted(() => {
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
 }
 
+.main-store-selection-indicator {
+  background-color: #FFFFFF;
+  border: 1.5px solid #666;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
 .job-selection-label {
   flex: 1;
   font-size: 1rem;
@@ -1168,6 +1189,12 @@ onMounted(() => {
   height: 12px;
   border-radius: 50%;
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.main-store-indicator {
+  background-color: #FFFFFF;
+  border: 1.5px solid #666;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
 }
 
 .job-name {

@@ -130,10 +130,18 @@ export const useCalendarStore = defineStore('calendar', {
      */
     toggleDate(dateString: DateString) {
       if (this.currentJobId === null) {
-        // 掛け持ちなしモードの場合は従来通り
-        if (this.selectedDates.has(dateString)) {
+        // 本店モードの場合
+        const jobIds = this.dateJobMap[dateString] || []
+
+        if (this.selectedDates.has(dateString) && jobIds.length === 0) {
+          // 本店のみで選択されている場合は解除
+          this.selectedDates.delete(dateString)
+        } else if (this.selectedDates.has(dateString) && jobIds.length > 0) {
+          // 本店+掛け持ち先の場合は、本店のみ解除
+          // 掛け持ち先は残る
           this.selectedDates.delete(dateString)
         } else {
+          // 未選択の場合は本店として選択
           this.selectedDates.add(dateString)
         }
       } else {
@@ -144,21 +152,20 @@ export const useCalendarStore = defineStore('calendar', {
         if (index > -1) {
           // 既に選択されている場合は削除
           jobIds.splice(index, 1)
-          if (jobIds.length === 0) {
+          if (jobIds.length === 0 && !this.selectedDates.has(dateString)) {
+            // 掛け持ち先もメインも無い場合は完全に削除
             delete this.dateJobMap[dateString]
-            this.selectedDates.delete(dateString)
+          } else if (jobIds.length === 0) {
+            // メインのみ残っている場合
+            delete this.dateJobMap[dateString]
           } else {
             this.dateJobMap[dateString] = jobIds
           }
         } else {
           // 選択されていない場合は追加
-          if (jobIds.length === 0) {
-            this.dateJobMap[dateString] = [this.currentJobId]
-            this.selectedDates.add(dateString)
-          } else {
-            jobIds.push(this.currentJobId)
-            this.dateJobMap[dateString] = jobIds
-          }
+          jobIds.push(this.currentJobId)
+          this.dateJobMap[dateString] = jobIds
+          this.selectedDates.add(dateString)
         }
       }
     },

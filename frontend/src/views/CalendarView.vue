@@ -7,7 +7,7 @@
       <div class="calendar-card">
         <!-- 選択中ジョブバナー -->
         <div class="current-job-banner" :style="{ backgroundColor: getCurrentJobColor() }">
-          <span class="banner-text">{{ getCurrentJobName() }}で選択しています</span>
+          <span class="banner-text" :style="{ color: getCurrentJobTextColor() }">{{ getCurrentJobName() }}で選択しています</span>
         </div>
 
         <!-- ヘッダー：年月 -->
@@ -286,6 +286,14 @@ const getCurrentJobColor = () => {
   return job?.color || '#999'
 }
 
+// 現在選択中のジョブの文字色を取得
+const getCurrentJobTextColor = () => {
+  if (store.currentJobId === null) {
+    return '#000000' // 本店（白背景）は黒文字
+  }
+  return '#000000' // 掛け持ち先（蛍光色背景）も黒文字
+}
+
 // 休日基準で選択（確認付き）
 const handleSelectAll = () => {
   // 選択を解除する日付を確認
@@ -426,7 +434,7 @@ const handleSelectByWeekday = (dayOfWeek: number) => {
 }
 
 .banner-text {
-  color: white;
+  /* color is set dynamically via :style */
   font-weight: bold;
   font-size: 1.1rem;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);

@@ -128,6 +128,7 @@
           </button>
         </div>
         <div v-else class="job-group-header no-job">
+          <span class="job-color-indicator main-store-indicator"></span>
           <span class="job-name">{{ calendarStore.mainStoreDisplayName }}</span>
         </div>
 
@@ -240,6 +241,10 @@
                   v-if="summary.jobId"
                   class="job-color-dot"
                   :style="{ backgroundColor: calendarStore.getJobById(summary.jobId)?.color }"
+                ></span>
+                <span
+                  v-else
+                  class="job-color-dot main-store-dot-card"
                 ></span>
                 <span class="job-summary-name">
                   {{ summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : calendarStore.mainStoreDisplayName }}
@@ -1835,6 +1840,12 @@ const confirmTimeEdit = () => {
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
 }
 
+.main-store-indicator {
+  background-color: #FFFFFF;
+  border: 1.5px solid #666;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
 .job-name {
   font-size: 1.05rem;
   color: #333;
@@ -2430,6 +2441,12 @@ const confirmTimeEdit = () => {
   height: 12px;
   border-radius: 50%;
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.main-store-dot-card {
+  background-color: #FFFFFF;
+  border: 1.5px solid #666;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
 }
 
 .job-summary-name {
