@@ -104,6 +104,12 @@
           <div class="legend-item base-style">
             <div class="legend-card">過去ベース</div>
           </div>
+          <div class="legend-item overtime-warning">
+            <div class="legend-card">12時間超え</div>
+          </div>
+          <div class="legend-item severe-warning">
+            <div class="legend-card">23時間以上</div>
+          </div>
         </div>
       </div>
 
@@ -845,6 +851,38 @@ const loadDefaultTimes = () => {
 
 // カードの背景色クラスを取得
 const getCardBackgroundClass = (workDay: WorkDay) => {
+  // 外された日は既存の色分けを使用
+  if (workDay.isRemoved) {
+    // 個別設定が存在する場合は常に黄色（最優先）
+    if (workDay.startTimeSetBy === 'custom' || workDay.endTimeSetBy === 'custom') {
+      return 'custom-style'
+    }
+    // 過去ベースの設定がある場合
+    if (workDay.startTimeSetBy === 'base' || workDay.endTimeSetBy === 'base') {
+      return 'base-style'
+    }
+    // 一括設定がある場合
+    if (workDay.startTimeSetBy === 'bulk' || workDay.endTimeSetBy === 'bulk') {
+      return 'bulk-style'
+    }
+    // デフォルトの場合
+    return 'default-style'
+  }
+
+  // 警告表示（勤務時間が長すぎる場合）
+  const workMinutes = workDay.workMinutes
+
+  // 23時間以上（1380分以上）：深刻な警告（赤）
+  if (workMinutes >= 1380) {
+    return 'severe-warning'
+  }
+
+  // 12時間超え（720分超）：警告（オレンジ/黄色）
+  if (workMinutes > 720) {
+    return 'overtime-warning'
+  }
+
+  // 通常の色分けロジック
   // 個別設定が存在する場合は常に黄色（最優先）
   if (workDay.startTimeSetBy === 'custom' || workDay.endTimeSetBy === 'custom') {
     return 'custom-style'
@@ -1804,6 +1842,20 @@ const confirmTimeEdit = () => {
   border-left-color: #ef4444;
 }
 
+/* 12時間超え警告スタイル - オレンジ */
+.legend-item.overtime-warning .legend-card {
+  background: #fed7aa;
+  color: #7c2d12;
+  border-left-color: #fb923c;
+}
+
+/* 23時間以上深刻な警告スタイル - 赤 */
+.legend-item.severe-warning .legend-card {
+  background: #fecaca;
+  color: #7f1d1d;
+  border-left-color: #dc2626;
+}
+
 /* 個別設定ヘッダー */
 .individual-settings-header {
   margin-bottom: 0.75rem;
@@ -2048,6 +2100,16 @@ const confirmTimeEdit = () => {
 /* 過去のシフトベーススタイル - 赤色 */
 .work-day-card.base-style {
   background: #fee2e2;
+}
+
+/* 12時間超え警告スタイル - オレンジ */
+.work-day-card.overtime-warning {
+  background: #fed7aa;
+}
+
+/* 23時間以上深刻な警告スタイル - 赤 */
+.work-day-card.severe-warning {
+  background: #fecaca;
 }
 
 /* 左ボーダースタイル（単色） */
