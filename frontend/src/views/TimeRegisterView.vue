@@ -129,7 +129,7 @@
           <button
             v-if="jobHasOvertimeWarning(group.job.id)"
             @click="openOvertimeModal(group.job.id)"
-            class="overtime-warning-btn"
+            :class="['overtime-warning-btn', { 'overtime-warning-btn-alone': !jobHasConflicts(group.job.id) }]"
             title="12時間超え勤務あり - クリックして詳細を表示"
           >
             ⚠️
@@ -149,7 +149,7 @@
           <button
             v-if="jobHasOvertimeWarning(undefined)"
             @click="openOvertimeModal(undefined)"
-            class="overtime-warning-btn"
+            :class="['overtime-warning-btn', { 'overtime-warning-btn-alone': !jobHasConflicts(undefined) }]"
             title="12時間超え勤務あり - クリックして詳細を表示"
           >
             ⚠️
@@ -818,8 +818,8 @@ const getConflictsForJob = (jobId: JobId | undefined): ConflictInfo[] => {
 const hasOvertimeWarning = (workDay: WorkDay): boolean => {
   // 外された日は警告なし
   if (workDay.isRemoved) return false
-  // 12時間（720分）を超えるかチェック
-  return workDay.workMinutes > 720
+  // 12時間（720分）以上かチェック
+  return workDay.workMinutes >= 720
 }
 
 // 特定のジョブに12時間超えの勤務日があるかチェック
@@ -827,13 +827,13 @@ const jobHasOvertimeWarning = (jobId: JobId | undefined): boolean => {
   const jobWorkDays = workDays.value.filter(wd =>
     wd.jobId === jobId && !wd.isRemoved
   )
-  return jobWorkDays.some(wd => wd.workMinutes > 720)
+  return jobWorkDays.some(wd => wd.workMinutes >= 720)
 }
 
 // 特定のジョブの12時間超え勤務日を取得
 const getOvertimeWorkDaysForJob = (jobId: JobId | undefined): WorkDay[] => {
   return workDays.value.filter(wd =>
-    wd.jobId === jobId && !wd.isRemoved && wd.workMinutes > 720
+    wd.jobId === jobId && !wd.isRemoved && wd.workMinutes >= 720
   )
 }
 
@@ -2072,6 +2072,10 @@ const confirmTimeEdit = () => {
   transform: scale(0.95);
 }
 
+.overtime-warning-btn-alone {
+  margin-left: auto;
+}
+
 /* 勤務日カードリスト */
 .work-days-list {
   display: flex;
@@ -2283,8 +2287,8 @@ const confirmTimeEdit = () => {
   border: 3px solid transparent;
   border-left: 4px solid #ffff00 !important;
   border-right: 4px solid #ff0000 !important;
-  border-top: 3px solid #ffaa00;
-  border-bottom: 3px solid #ffaa00;
+  border-top: 3px solid #ff0000;
+  border-bottom: 3px solid #ffff00;
   box-shadow: 0 0 12px rgba(255, 170, 0, 0.5),
               0 4px 8px rgba(0, 0, 0, 0.15);
   background: linear-gradient(to right, rgba(255, 255, 0, 0.03) 50%, rgba(255, 0, 0, 0.03) 50%);
