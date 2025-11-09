@@ -402,8 +402,24 @@ const getStatusBadgeClass = (workDay: WorkDay) => {
 
 // シフトデータをLocalStorageに保存
 const saveShiftData = () => {
+  // 各workDayにjobNameを追加（保存時点の掛け持ち先名称を保持）
+  const workDaysWithJobName = workDaysForSubmit.value.map(workDay => {
+    if (workDay.jobId !== undefined) {
+      const job = calendarStore.getJobById(workDay.jobId)
+      return {
+        ...workDay,
+        jobName: job?.name || ''
+      }
+    } else {
+      return {
+        ...workDay,
+        jobName: calendarStore.mainStoreDisplayName
+      }
+    }
+  })
+
   const shiftData = {
-    workDays: workDaysForSubmit.value,
+    workDays: workDaysWithJobName,
     totalSummary: totalSummary.value,
     remarks: timeRegisterStore.remarks,
     submittedAt: new Date().toISOString(),
@@ -475,7 +491,7 @@ const saveOnly = () => {
   saveShiftData()
   closeSubmitModal()
   const jobInfo = getJobInfoForAlert()
-  alert(`シフトを保存しました${jobInfo}`)
+  alert(`シフトを保存しました${jobInfo}\n\n※ 選択データは保持されています。引き続き編集や他の方法での提出が可能です。`)
 }
 
 // アラート用のジョブ情報を取得
@@ -497,6 +513,7 @@ const submitViaEmail = () => {
   window.location.href = `mailto:?subject=${subject}&body=${body}`
   saveShiftData()
   closeSubmitModal()
+  // メールアプリが開くため、データ保持のメッセージは表示しない
 }
 
 // LINE送信
@@ -505,6 +522,7 @@ const submitViaLine = () => {
   window.open(`https://line.me/R/share?text=${text}`, '_blank')
   saveShiftData()
   closeSubmitModal()
+  // LINE共有画面が開くため、データ保持のメッセージは表示しない
 }
 
 // CSVダウンロード
@@ -547,6 +565,7 @@ const downloadCSV = () => {
 
   saveShiftData()
   closeSubmitModal()
+  alert('CSVファイルをダウンロードしました\n\n※ 選択データは保持されています。引き続き編集や他の方法での提出が可能です。')
 }
 
 // クリップボードにコピー
@@ -555,8 +574,10 @@ const copyToClipboard = async () => {
     await navigator.clipboard.writeText(generateShiftText())
     saveShiftData()
     closeSubmitModal()
+    alert('シフト情報をコピーしました\n\n※ 選択データは保持されています。引き続き編集や他の方法での提出が可能です。')
   } catch (err) {
     console.error('クリップボードへのコピーに失敗:', err)
+    alert('コピーに失敗しました')
   }
 }
 

@@ -18,9 +18,6 @@
           <button @click="goToCalendar" class="empty-btn calendar-btn">
             カレンダーへ
           </button>
-          <button @click="goToHome" class="empty-btn home-btn">
-            ホームへ
-          </button>
         </div>
       </div>
 
@@ -278,14 +275,45 @@ const createFromBase = () => {
   const currentYear = calendarStore.currentYear
   const currentMonth = calendarStore.currentMonth
 
-  // 確認ダイアログを表示
+  // 掛け持ち先名称の変更を検出
+  const changedJobs: Array<{ oldName: string; newName: string }> = []
+  selectedShift.value.workDays.forEach(savedDay => {
+    if (savedDay.jobId !== undefined && savedDay.jobName) {
+      const currentJob = calendarStore.getJobById(savedDay.jobId)
+      if (currentJob && currentJob.name !== savedDay.jobName) {
+        // 既に同じ組み合わせが存在しないか確認（重複を避ける）
+        const exists = changedJobs.some(
+          item => item.oldName === savedDay.jobName && item.newName === currentJob.name
+        )
+        if (!exists) {
+          changedJobs.push({ oldName: savedDay.jobName, newName: currentJob.name })
+        }
+      }
+    }
+  })
+
+  // 掛け持ち先名称が変更されている場合、確認ダイアログを表示
+  if (changedJobs.length > 0) {
+    let message = '以下の掛け持ち先の名称が変更されています：\n\n'
+    changedJobs.forEach(job => {
+      message += `・保存時: ${job.oldName} → 現在: ${job.newName}\n`
+    })
+    message += '\n現在の設定で復元しますがよろしいですか？'
+
+    if (!confirm(message)) {
+      return
+    }
+  }
+
+  // 確認ダイアログを表示（キャンセル時は何もしない）
   const monthLabel = `${currentYear}年${currentMonth + 1}月`
   if (!confirm(`現在選択中の${monthLabel}に作成しますがよろしいですか？`)) {
     return
   }
 
-  // カレンダーの選択をクリア
-  calendarStore.clearAll()
+  // 確認後にカレンダーの選択をクリア
+  calendarStore.selectedDates.clear()
+  calendarStore.dateJobMap = {}
 
   // 保存されたシフトの各勤務日について、同じ曜日・週番号の日付を見つける
   const datesToSelect: string[] = []
@@ -351,22 +379,40 @@ const createFromBase = () => {
   })
 
   // メイン選択の日付を特定（掛け持ち情報がないor元々メインで選択されていた日付）
-  const mainDates = new Set<DateString>()
+  const mainDates = new Set<string>()
   selectedShift.value!.workDays.forEach(workDay => {
     if (workDay.jobId === undefined) {
-      // 過去の日付は除外して対応する未来の日付を追加
-      const date = new Date(workDay.date)
-      const dayOfWeek = date.getDay()
-      const weekNumber = workDay.weekNumber
+      const targetDayOfWeek = workDay.dayOfWeek
+      const targetWeekNumber = workDay.weekNumber
 
-      // 現在表示中の月で同じ曜日・週番号の日付を探す
-      for (let day = 1; day <= 31; day++) {
-        const targetDate = new Date(currentYear, currentMonth, day)
-        if (targetDate.getMonth() !== currentMonth) break
+      // 現在の月の全ての日付をチェック
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
 
-        const dateString = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-        if (targetDate.getDay() === dayOfWeek && datesToSelect.includes(dateString)) {
-          mainDates.add(dateString)
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(currentYear, currentMonth, day)
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const dayStr = String(date.getDate()).padStart(2, '0')
+        const dateString = `${year}-${month}-${dayStr}`
+        const dayOfWeek = date.getDay()
+
+        // 週番号を計算
+        const firstDay = new Date(currentYear, currentMonth, 1)
+        const firstDayOfWeek = firstDay.getDay()
+        const firstSunday = new Date(firstDay)
+        firstSunday.setDate(firstDay.getDate() - firstDayOfWeek)
+        const diffTime = date.getTime() - firstSunday.getTime()
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+        const weekNumber = Math.floor(diffDays / 7) + 1
+
+        // 曜日と週番号が一致する場合
+        if (dayOfWeek === targetDayOfWeek && weekNumber === targetWeekNumber) {
+          // 過去の日付は除外
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          if (date >= today) {
+            mainDates.add(dateString)
+          }
         }
       }
     }
@@ -374,16 +420,19 @@ const createFromBase = () => {
 
   // メイン選択のみをselectedDatesに追加
   mainDates.forEach(date => {
-    calendarStore.selectDate(date)
+    calendarStore.selectedDates.add(date)
   })
 
-  // 掛け持ち情報をdateJobMapに設定
-  Object.keys(dateJobMap).forEach(date => {
-    calendarStore.dateJobMap[date] = dateJobMap[date]
+  // 掛け持ち情報をdateJobMapに設定（各日付ごとに個別に設定）
+  Object.keys(dateJobMap).forEach(dateString => {
+    calendarStore.dateJobMap[dateString] = [...dateJobMap[dateString]]
   })
+
+  // LocalStorageに保存（画面遷移時に消えないようにするため）
+  calendarStore.saveJobsToLocalStorage()
 
   // 選択された日付でworkDaysを初期化（掛け持ち情報を含む）
-  timeRegisterStore.initializeFromDates(datesToSelect, calendarStore.dateJobMap, mainDates)
+  timeRegisterStore.initializeFromDates(datesToSelect, calendarStore.dateJobMap, calendarStore.selectedDates)
 
   // 保存されたシフトの時間を適用
   timeRegisterStore.workDays.forEach((workDay, index) => {

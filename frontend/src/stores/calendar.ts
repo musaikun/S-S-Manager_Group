@@ -33,10 +33,23 @@ export const useCalendarStore = defineStore('calendar', {
     },
 
     /**
-     * 選択された日付の数
+     * 選択された日付の数（本店と掛け持ち先の両方を含む）
      */
     selectedCount: (state): number => {
-      return state.selectedDates.size
+      // 本店の選択日付と掛け持ち先の選択日付を合わせてユニークな日付数を取得
+      const allSelectedDates = new Set<DateString>()
+
+      // 本店の選択日付を追加
+      state.selectedDates.forEach(date => allSelectedDates.add(date))
+
+      // 掛け持ち先の選択日付を追加
+      Object.keys(state.dateJobMap).forEach(date => {
+        if (state.dateJobMap[date].length > 0) {
+          allSelectedDates.add(date)
+        }
+      })
+
+      return allSelectedDates.size
     },
 
     /**
@@ -239,6 +252,9 @@ export const useCalendarStore = defineStore('calendar', {
           })
         }
       }
+
+      // LocalStorageに保存
+      this.saveJobsToLocalStorage()
     },
 
     /**
@@ -262,6 +278,9 @@ export const useCalendarStore = defineStore('calendar', {
           }
         })
       }
+
+      // LocalStorageに保存
+      this.saveJobsToLocalStorage()
     },
 
     /**
@@ -319,6 +338,9 @@ export const useCalendarStore = defineStore('calendar', {
           })
         }
       }
+
+      // LocalStorageに保存
+      this.saveJobsToLocalStorage()
     },
 
     /**
