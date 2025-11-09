@@ -158,8 +158,10 @@ export interface JobSummary {
 export interface TimeRegisterState {
   /** 勤務日のリスト */
   workDays: WorkDay[]
-  /** 一括設定 */
+  /** 一括設定（メインのデフォルト時刻） */
   bulkSettings: BulkSettings
+  /** 掛け持ち先ごとのデフォルト時刻（jobIdをキーとする） */
+  jobDefaultTimes: Record<string, BulkSettings>
   /** 休憩時間を加味するか */
   includeBreak: boolean
   /** 備考欄 */

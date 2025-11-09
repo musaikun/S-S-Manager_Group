@@ -43,6 +43,7 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
         startTime: defaultTimes.startTime,
         endTime: defaultTimes.endTime
       },
+      jobDefaultTimes: {},
       includeBreak: false,
       remarks: '',
       showSubmitModal: false,
@@ -259,15 +260,24 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
           const dayOfWeek = dateObj.getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6
           const weekNumber = getWeekNumber(date)
 
+          // jobIdに応じたデフォルト時刻を取得
+          let jobTimes = defaultTimes
+          if (jobId !== undefined) {
+            const jobKey = jobId.toString()
+            if (this.jobDefaultTimes[jobKey]) {
+              jobTimes = this.jobDefaultTimes[jobKey]
+            }
+          }
+
           workDaysList.push({
             date,
             dayOfWeek,
             weekNumber,
-            startTime: defaultTimes.startTime,
-            endTime: defaultTimes.endTime,
-            initialStartTime: defaultTimes.startTime,
-            initialEndTime: defaultTimes.endTime,
-            workMinutes: calculateWorkMinutes(defaultTimes.startTime, defaultTimes.endTime),
+            startTime: jobTimes.startTime,
+            endTime: jobTimes.endTime,
+            initialStartTime: jobTimes.startTime,
+            initialEndTime: jobTimes.endTime,
+            workMinutes: calculateWorkMinutes(jobTimes.startTime, jobTimes.endTime),
             isModified: false,
             isRemoved: false,
             displayDate: formatDisplayDate(dateObj, dayOfWeek),
@@ -420,6 +430,39 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
       this.bulkSettings = {
         ...this.bulkSettings,
         ...settings
+      }
+    },
+
+    /**
+     * 掛け持ち先ごとのデフォルト時刻を更新
+     */
+    updateJobDefaultTimes(jobId: JobId, settings: Partial<BulkSettings>) {
+      const jobKey = jobId.toString()
+      const currentSettings = this.jobDefaultTimes[jobKey] || {
+        startTime: this.bulkSettings.startTime,
+        endTime: this.bulkSettings.endTime
+      }
+      this.jobDefaultTimes[jobKey] = {
+        ...currentSettings,
+        ...settings
+      }
+      this.saveJobDefaultTimes()
+    },
+
+    /**
+     * 掛け持ち先デフォルト時刻をLocalStorageに保存
+     */
+    saveJobDefaultTimes() {
+      localStorage.setItem('jobDefaultTimes', JSON.stringify(this.jobDefaultTimes))
+    },
+
+    /**
+     * 掛け持ち先デフォルト時刻をLocalStorageから読み込み
+     */
+    loadJobDefaultTimes() {
+      const saved = localStorage.getItem('jobDefaultTimes')
+      if (saved) {
+        this.jobDefaultTimes = JSON.parse(saved)
       }
     },
 
