@@ -990,7 +990,7 @@ const getJobFilterBannerStyle = () => {
   }
   if (selectedJobFilter.value === undefined) {
     // メイン店舗の場合も透明感のある背景で統一
-    const color = '#6c757d' // メイン店舗のカラー
+    const color = '#ffffff' // メイン店舗のカラー
     return {
       background: `linear-gradient(135deg, rgba(108, 117, 125, 0.08), rgba(108, 117, 125, 0.15))`,
       borderLeft: `4px solid ${color}`
@@ -1014,9 +1014,9 @@ const getFilterWrapperBorderStyle = () => {
     }
   }
   if (selectedJobFilter.value === undefined) {
-    // メイン店舗選択時は薄いグレーのボーダー
+    // メイン店舗選択時は白のボーダー
     return {
-      border: '3px solid #6c757d',
+      border: '3px solid #ffffff',
       boxShadow: '0 0 12px rgba(108, 117, 125, 0.3)'
     }
   }
