@@ -345,4 +345,11 @@ body {
     font-size: 1rem;
   }
 }
+
+/* PC表示用：メインコンテンツの幅制限を解除 */
+@media (min-width: 769px) {
+  .slider-layout {
+    max-width: 100%;
+  }
+}
 </style>
