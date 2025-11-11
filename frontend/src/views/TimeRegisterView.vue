@@ -983,10 +983,10 @@ const getJobFilterName = (): string => {
 
 const getJobFilterBannerStyle = () => {
   if (selectedJobFilter.value === null) {
-    // 指定なしの場合は薄い青系の背景
-    const color = '#667eea'
+    // 指定なしの場合は明るい蛍光紫の背景
+    const color = '#B24BF3'
     return {
-      background: `linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(102, 126, 234, 0.15))`,
+      background: `linear-gradient(135deg, rgba(178, 75, 243, 0.08), rgba(178, 75, 243, 0.15))`,
       borderLeft: `4px solid ${color}`
     }
   }
@@ -1008,8 +1008,8 @@ const getJobFilterBannerStyle = () => {
 
 const getFilterWrapperBorderStyle = () => {
   if (selectedJobFilter.value === null) {
-    // 指定なし時は薄い青系のボーダー
-    const color = '#667eea'
+    // 指定なし時は明るい蛍光紫のボーダー
+    const color = '#B24BF3'
     return {
       border: `3px solid ${color}`,
       boxShadow: `0 0 12px ${color}40`
