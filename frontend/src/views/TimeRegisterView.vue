@@ -101,13 +101,13 @@
 
             <div class="bulk-actions">
               <button @click="handleBulkApplyAll('both')" class="bulk-btn bulk-btn-all">
-                {{ bulkApplyBothLabel }}
+                <span v-html="bulkApplyBothLabel"></span>
               </button>
               <button @click="handleBulkApplyAll('start')" class="bulk-btn bulk-btn-all">
-                {{ bulkApplyStartLabel }}
+                <span v-html="bulkApplyStartLabel"></span>
               </button>
               <button @click="handleBulkApplyAll('end')" class="bulk-btn bulk-btn-all">
-                {{ bulkApplyEndLabel }}
+                <span v-html="bulkApplyEndLabel"></span>
               </button>
             </div>
 
@@ -1337,17 +1337,17 @@ const toggleWeekday = (dayOfWeek: number, event?: Event) => {
 // ボタンラベル（曜日・週選択に応じて変化）
 const bulkApplyBothLabel = computed(() => {
   const hasSelection = selectedWeekdays.value.length > 0 || selectedWeeks.value.length > 0
-  return hasSelection ? '絞り込んだ日の両方の時間を変更' : 'すべての日の両方の時間を変更'
+  return hasSelection ? '絞り込んだ日の<span style="color: #ef4444;">両方の時間</span>を変更' : 'すべての日の<span style="color: #ef4444;">両方の時間</span>を変更'
 })
 
 const bulkApplyStartLabel = computed(() => {
   const hasSelection = selectedWeekdays.value.length > 0 || selectedWeeks.value.length > 0
-  return hasSelection ? '絞り込んだ日の開始時刻のみ変更' : 'すべての日の開始時刻のみを変更'
+  return hasSelection ? '絞り込んだ日の<span style="color: #ef4444;">開始時刻のみ</span>変更' : 'すべての日の<span style="color: #ef4444;">開始時刻のみ</span>を変更'
 })
 
 const bulkApplyEndLabel = computed(() => {
   const hasSelection = selectedWeekdays.value.length > 0 || selectedWeeks.value.length > 0
-  return hasSelection ? '絞り込んだ日の終了時刻のみ変更' : 'すべての日の終了時刻のみを変更'
+  return hasSelection ? '絞り込んだ日の<span style="color: #ef4444;">終了時刻のみ</span>変更' : 'すべての日の<span style="color: #ef4444;">終了時刻のみ</span>を変更'
 })
 
 // 一括適用（選択曜日・週に基づく）
