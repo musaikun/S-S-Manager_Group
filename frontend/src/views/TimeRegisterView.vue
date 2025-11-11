@@ -7,7 +7,6 @@
         <div class="job-filter-banner" :style="getJobFilterBannerStyle()">
           <div class="banner-content">
             <div class="banner-left">
-              <span class="banner-icon">🎯</span>
               <span class="banner-text">{{ getJobFilterName() }}</span>
             </div>
             <div class="banner-right">
@@ -1868,11 +1867,6 @@ const confirmTimeEdit = () => {
   gap: 0.625rem;
   flex: 1;
   min-width: 0;
-}
-
-.banner-icon {
-  font-size: 1.25rem;
-  flex-shrink: 0;
 }
 
 .banner-text {
