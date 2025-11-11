@@ -598,7 +598,9 @@
         </h3>
 
         <!-- 開始時間 -->
-        <div class="modal-section" v-if="!isBulkMode || bulkTimeType === 'start'">
+        <div class="modal-section" v-if="!isBulkMode || bulkTimeType === 'start'"
+             @touchstart="handleStartTouchStart"
+             @touchend="handleStartTouchEnd">
           <div class="modal-section-header">
             <label class="modal-label">開始時間</label>
             <div class="toggle-switch">
@@ -652,7 +654,9 @@
         </div>
 
         <!-- 終了時間 -->
-        <div class="modal-section" v-if="!isBulkMode || bulkTimeType === 'end'">
+        <div class="modal-section" v-if="!isBulkMode || bulkTimeType === 'end'"
+             @touchstart="handleEndTouchStart"
+             @touchend="handleEndTouchEnd">
           <div class="modal-section-header">
             <label class="modal-label">終了時間</label>
             <div class="toggle-switch">
@@ -794,6 +798,12 @@ const selectedStartHour = ref(9) // 0-23の範囲
 const selectedStartMinute = ref(0) // 0, 15, 30, 45
 const selectedEndHour = ref(18) // 0-23の範囲
 const selectedEndMinute = ref(0) // 0, 15, 30, 45
+
+// スワイプ機能の状態
+const touchStartX = ref(0)
+const touchStartY = ref(0)
+const touchEndX = ref(0)
+const touchEndY = ref(0)
 
 // 確認モーダルの状態
 const showConfirmModal = ref(false)
@@ -1609,6 +1619,64 @@ const selectStartMinute = (minute: number) => {
 // 終了時間の分選択
 const selectEndMinute = (minute: number) => {
   selectedEndMinute.value = minute
+}
+
+// スワイプ機能：開始時間エリア用
+const handleStartTouchStart = (event: TouchEvent) => {
+  touchStartX.value = event.touches[0].clientX
+  touchStartY.value = event.touches[0].clientY
+}
+
+const handleStartTouchEnd = (event: TouchEvent) => {
+  touchEndX.value = event.changedTouches[0].clientX
+  touchEndY.value = event.changedTouches[0].clientY
+  handleStartSwipe()
+}
+
+const handleStartSwipe = () => {
+  const deltaX = touchEndX.value - touchStartX.value
+  const deltaY = touchEndY.value - touchStartY.value
+  const minSwipeDistance = 50 // 最小スワイプ距離
+
+  // 横方向のスワイプが縦方向より大きい場合のみ反応
+  if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+    if (deltaX > 0) {
+      // 右スワイプ → 午前
+      startPm.value = false
+    } else {
+      // 左スワイプ → 午後
+      startPm.value = true
+    }
+  }
+}
+
+// スワイプ機能：終了時間エリア用
+const handleEndTouchStart = (event: TouchEvent) => {
+  touchStartX.value = event.touches[0].clientX
+  touchStartY.value = event.touches[0].clientY
+}
+
+const handleEndTouchEnd = (event: TouchEvent) => {
+  touchEndX.value = event.changedTouches[0].clientX
+  touchEndY.value = event.changedTouches[0].clientY
+  handleEndSwipe()
+}
+
+const handleEndSwipe = () => {
+  const deltaX = touchEndX.value - touchStartX.value
+  const deltaY = touchEndY.value - touchStartY.value
+  const minSwipeDistance = 50 // 最小スワイプ距離
+
+  // 横方向のスワイプが縦方向より大きい場合のみ反応
+  if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+    if (deltaX > 0) {
+      // 右スワイプ → 午前
+      endPm.value = false
+    } else {
+      // 左スワイプ → 午後
+      endPm.value = true
+    }
+  }
 }
 
 // 一括設定用のモーダルを開く
