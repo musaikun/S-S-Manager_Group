@@ -1337,17 +1337,17 @@ const toggleWeekday = (dayOfWeek: number, event?: Event) => {
 // ボタンラベル（曜日・週選択に応じて変化）
 const bulkApplyBothLabel = computed(() => {
   const hasSelection = selectedWeekdays.value.length > 0 || selectedWeeks.value.length > 0
-  return hasSelection ? '適用' : '全日に適用'
+  return hasSelection ? '絞り込んだ日の両方の時間を変更' : 'すべての日の両方の時間を変更'
 })
 
 const bulkApplyStartLabel = computed(() => {
   const hasSelection = selectedWeekdays.value.length > 0 || selectedWeeks.value.length > 0
-  return hasSelection ? '開始時刻のみ適用' : '全日に開始時刻のみ適用'
+  return hasSelection ? '絞り込んだ日の開始時刻のみ変更' : 'すべての日の開始時刻のみを変更'
 })
 
 const bulkApplyEndLabel = computed(() => {
   const hasSelection = selectedWeekdays.value.length > 0 || selectedWeeks.value.length > 0
-  return hasSelection ? '終了時刻のみ適用' : '全日に終了時刻のみ適用'
+  return hasSelection ? '絞り込んだ日の終了時刻のみ変更' : 'すべての日の終了時刻のみを変更'
 })
 
 // 一括適用（選択曜日・週に基づく）

@@ -2,7 +2,7 @@
   <div class="job-manager">
     <!-- アコーディオンヘッダー -->
     <div class="accordion-header" @click="toggleAccordion">
-      <span>掛け持ち設定/選択モード切替</span>
+      <span>掛け持ち先追加/選択モード切替</span>
       <span class="accordion-icon">{{ isOpen ? '▲' : '▼' }}</span>
     </div>
 
