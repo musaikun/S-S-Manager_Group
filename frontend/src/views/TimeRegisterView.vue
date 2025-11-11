@@ -976,7 +976,7 @@ const getJobColor = (jobId: JobId | undefined): string => {
 // 掛け持ち先フィルターバナー関連
 const getJobFilterName = (): string => {
   if (selectedJobFilter.value === null) {
-    return '指定なし'
+    return '掛け持ち先の指定なし'
   }
   return getJobName(selectedJobFilter.value)
 }

@@ -28,9 +28,9 @@
           </div>
 
           <div class="button-group">
-            <button @click="handleSkip" class="btn skip-btn">
+            <!-- <button @click="handleSkip" class="btn skip-btn">
               スキップ
-            </button>
+            </button> -->
             <button @click="handleSave" class="btn save-btn" :disabled="!storeName.trim()">
               保存
             </button>
