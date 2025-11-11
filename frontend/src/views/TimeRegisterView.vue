@@ -375,7 +375,8 @@
 
               <div class="salary-result-note">
                 ※ 深夜給（22:00～05:00は25%増）を含む概算です。<br>
-                ※ 各種税金や社会保険料などの控除を考慮していません。
+                ※ 各種税金や社会保険料などの控除を考慮していません。<br>
+                ※ 休憩時間は差し引いて計算されています
               </div>
             </div>
 
@@ -448,7 +449,8 @@
               <span class="help-value">60分</span>
             </div>
             <div class="help-note">
-              ※ 労働基準法 第34条の要点（休憩の原則）を参考にしています。
+              ※ 労働基準法 第34条の要点（休憩の原則）を参考にしています。<br>
+              ※ この休憩時間が必ずしも適用されるわけではありません。
             </div>
           </div>
           <button @click="showHelpModal = false" class="close-btn">閉じる</button>
