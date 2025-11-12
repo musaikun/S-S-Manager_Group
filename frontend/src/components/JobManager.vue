@@ -20,7 +20,7 @@
           :class="{ active: currentJobId === job.id }"
         >
           <button
-            class="job-button"
+            class="job-name-button"
             :style="{
               borderColor: currentJobId === job.id ? job.color : '#ddd',
               borderWidth: currentJobId === job.id ? '3px' : '2px',
@@ -30,6 +30,13 @@
           >
             <span class="job-color-dot" :style="{ backgroundColor: job.color }"></span>
             {{ job.name }}
+          </button>
+          <button
+            class="select-status-button"
+            :class="{ selected: currentJobId === job.id }"
+            @click="selectJob(job.id)"
+          >
+            {{ currentJobId === job.id ? '選択中' : '選択' }}
           </button>
           <button class="edit-button" @click="editJob(job)" title="編集">
             編集
@@ -207,13 +214,13 @@ const closeModal = () => {
   align-items: center;
 }
 
-.job-item.active .job-button {
+.job-item.active .job-name-button {
   font-weight: bold;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   transform: translateY(-1px);
 }
 
-.job-button {
+.job-name-button {
   flex: 1;
   padding: 0.875rem 1.25rem;
   border: 2px solid;
@@ -230,7 +237,7 @@ const closeModal = () => {
   position: relative;
 }
 
-.job-button::before {
+.job-name-button::before {
   content: '';
   position: absolute;
   top: 0;
@@ -242,14 +249,46 @@ const closeModal = () => {
   pointer-events: none;
 }
 
-.job-button:hover {
+.job-name-button:hover {
   transform: translateY(-3px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
-.job-button:active {
+.job-name-button:active {
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.select-status-button {
+  padding: 0.875rem 1rem;
+  border: 2px solid #4caf50;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4caf50;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.1);
+  white-space: nowrap;
+}
+
+.select-status-button:hover {
+  background: #4caf50;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}
+
+.select-status-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.2);
+}
+
+.select-status-button.selected {
+  background: #4caf50;
+  color: white;
+  border-color: #388e3c;
 }
 
 .job-color-dot {
