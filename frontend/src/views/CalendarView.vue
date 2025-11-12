@@ -81,7 +81,6 @@
               'sunday': cell.dayOfWeek === 0,
               'selected': cell.isSelected,
               'removed': isRemovedDate(cell.dateString),
-              'from-base': isFromBase(cell.dateString),
               'custom-time': hasCustomTime(cell.dateString),
               'bulk-applied': hasBulkApplied(cell.dateString)
             }"
@@ -228,16 +227,6 @@ const setNextMonth = () => {
 const isRemovedDate = (dateString: string): boolean => {
   const workDay = timeRegisterStore.workDays.find(wd => wd.date === dateString)
   return workDay?.isRemoved ?? false
-}
-
-// 過去のシフトベースから作成された日付かどうかを判定（個別設定がない場合）
-const isFromBase = (dateString: string): boolean => {
-  const workDay = timeRegisterStore.workDays.find(wd => wd.date === dateString)
-  if (!workDay || workDay.isRemoved) return false
-  // 個別設定が存在する場合はfalse（個別設定が優先）
-  if (workDay.startTimeSetBy === 'custom' || workDay.endTimeSetBy === 'custom') return false
-  // 過去ベースの設定がある場合
-  return workDay.startTimeSetBy === 'base' || workDay.endTimeSetBy === 'base'
 }
 
 // 個別設定された日付かどうかを判定
@@ -826,12 +815,6 @@ const handleSelectByWeekday = (dayOfWeek: number) => {
   background: linear-gradient(135deg, #10b981, #34d399);
   color: white;
   font-weight: 700;
-}
-
-/* 過去のシフトベースから作成された日付 - 薄い赤 */
-.date-cell.selected.from-base {
-  background: linear-gradient(135deg, #fca5a5, #fecaca);
-  color: #991b1b;
 }
 
 /* 個別設定された日付 - 黄色 */

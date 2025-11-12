@@ -496,11 +496,10 @@ const createFromBase = () => {
     )
 
     if (matchedSavedDay) {
-      // 時間を適用し、ベースから作成されたことをマーク
+      // 時間を適用
       timeRegisterStore.updateWorkDay(index, {
         startTime: matchedSavedDay.startTime,
-        endTime: matchedSavedDay.endTime,
-        isFromBase: true
+        endTime: matchedSavedDay.endTime
       })
     }
   })

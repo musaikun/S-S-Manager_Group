@@ -3,7 +3,6 @@
     <!-- アコーディオンヘッダー -->
     <div class="accordion-header" @click="toggleAccordion">
       <span class="header-text">
-        <span class="header-icon">🔄</span>
         掛け持ち店の登録/選択モード切替
       </span>
       <span class="accordion-icon">{{ isOpen ? '▲' : '▼' }}</span>

@@ -345,8 +345,6 @@ const getStartTimeClass = (workDay: WorkDay) => {
       return 'custom-time'
     case 'bulk':
       return 'bulk-time'
-    case 'base':
-      return 'from-base-time'
     default:
       return 'default-time'
   }
@@ -365,8 +363,6 @@ const getEndTimeClass = (workDay: WorkDay) => {
       return 'custom-time'
     case 'bulk':
       return 'bulk-time'
-    case 'base':
-      return 'from-base-time'
     default:
       return 'default-time'
   }
@@ -519,34 +515,31 @@ const getJobInfoForAlert = (): string => {
 
 // メール送信
 const submitViaEmail = () => {
-  if (!confirm('このシフトを保存しますか？')) {
-    return
-  }
   const subject = encodeURIComponent('シフト提出')
   const body = encodeURIComponent(generateShiftText())
   window.location.href = `mailto:?subject=${subject}&body=${body}`
-  saveShiftData()
   closeSubmitModal()
-  // メールアプリが開くため、データ保持のメッセージは表示しない
+
+  // 提出後に保存確認
+  if (confirm('このシフトを保存しますか？')) {
+    saveShiftData()
+  }
 }
 
 // LINE送信
 const submitViaLine = () => {
-  if (!confirm('このシフトを保存しますか？')) {
-    return
-  }
   const text = encodeURIComponent(generateShiftText())
   window.open(`https://line.me/R/share?text=${text}`, '_blank')
-  saveShiftData()
   closeSubmitModal()
-  // LINE共有画面が開くため、データ保持のメッセージは表示しない
+
+  // 提出後に保存確認
+  if (confirm('このシフトを保存しますか？')) {
+    saveShiftData()
+  }
 }
 
 // CSVダウンロード
 const downloadCSV = () => {
-  if (!confirm('このシフトを保存しますか？')) {
-    return
-  }
   let csv = '日付,開始時刻,終了時刻,勤務時間,実働時間,設定,掛け持ち先\n'
 
   workDaysForSubmit.value.forEach(day => {
@@ -583,21 +576,26 @@ const downloadCSV = () => {
   link.click()
   document.body.removeChild(link)
 
-  saveShiftData()
   closeSubmitModal()
   alert('CSVファイルをダウンロードしました\n\n※ 選択データは保持されています。引き続き編集や他の方法での提出が可能です。')
+
+  // ダウンロード後に保存確認
+  if (confirm('このシフトを保存しますか？')) {
+    saveShiftData()
+  }
 }
 
 // クリップボードにコピー
 const copyToClipboard = async () => {
-  if (!confirm('このシフトを保存しますか？')) {
-    return
-  }
   try {
     await navigator.clipboard.writeText(generateShiftText())
-    saveShiftData()
     closeSubmitModal()
     alert('シフト情報をコピーしました\n\n※ 選択データは保持されています。引き続き編集や他の方法での提出が可能です。')
+
+    // コピー後に保存確認
+    if (confirm('このシフトを保存しますか？')) {
+      saveShiftData()
+    }
   } catch (err) {
     console.error('クリップボードへのコピーに失敗:', err)
     alert('コピーに失敗しました')
@@ -740,11 +738,6 @@ onMounted(() => {
 
 .bulk-time {
   color: #3b82f6;
-  font-weight: 700;
-}
-
-.from-base-time {
-  color: #ef4444;
   font-weight: 700;
 }
 

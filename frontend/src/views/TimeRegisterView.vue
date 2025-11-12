@@ -1165,8 +1165,6 @@ const getStartTimeClass = (workDay: WorkDay) => {
       return 'custom-time'
     case 'bulk':
       return 'bulk-time'
-    case 'base':
-      return 'from-base-time'
     default:
       return 'default-time'
   }
@@ -1180,8 +1178,6 @@ const getEndTimeClass = (workDay: WorkDay) => {
       return 'custom-time'
     case 'bulk':
       return 'bulk-time'
-    case 'base':
-      return 'from-base-time'
     default:
       return 'default-time'
   }
@@ -2805,11 +2801,6 @@ const confirmTimeEdit = () => {
 
 .time-value.bulk-time {
   color: #3b82f6;
-  font-weight: 700;
-}
-
-.time-value.from-base-time {
-  color: #ef4444;
   font-weight: 700;
 }
 

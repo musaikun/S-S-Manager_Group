@@ -49,12 +49,10 @@ export interface WorkDay {
   customEndTime: boolean
   /** 一括設定が適用されたか */
   isBulkApplied: boolean
-  /** 過去のシフトベースから作成されたか */
-  isFromBase?: boolean
   /** 開始時刻の設定方法 */
-  startTimeSetBy: 'default' | 'bulk' | 'custom' | 'base'
+  startTimeSetBy: 'default' | 'bulk' | 'custom'
   /** 終了時刻の設定方法 */
-  endTimeSetBy: 'default' | 'bulk' | 'custom' | 'base'
+  endTimeSetBy: 'default' | 'bulk' | 'custom'
   /** ジョブID（掛け持ち機能使用時） */
   jobId?: JobId
   /** ジョブ名（保存時点の掛け持ち先名称を保持） */

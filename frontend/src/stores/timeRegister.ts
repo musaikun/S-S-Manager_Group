@@ -315,7 +315,6 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
             customStartTime: false,
             customEndTime: false,
             isBulkApplied: false,
-            isFromBase: false,
             startTimeSetBy: 'default',
             endTimeSetBy: 'default',
             jobId: jobId || undefined
@@ -391,7 +390,6 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
               customStartTime: false,
               customEndTime: false,
               isBulkApplied: false,
-              isFromBase: false,
               startTimeSetBy: 'default',
               endTimeSetBy: 'default',
               jobId: jobId || undefined
@@ -430,15 +428,9 @@ export const useTimeRegisterStore = defineStore('timeRegister', {
         let startTimeSetBy = workDay.startTimeSetBy
         let endTimeSetBy = workDay.endTimeSetBy
 
-        // isFromBaseが明示的に渡された場合（過去ベースから作成）
-        if (updates.isFromBase === true) {
-          if (startTimeChanged) startTimeSetBy = 'base'
-          if (endTimeChanged) endTimeSetBy = 'base'
-        } else {
-          // 個別設定による変更（TimeRegisterViewからの直接変更）
-          if (startTimeChanged) startTimeSetBy = 'custom'
-          if (endTimeChanged) endTimeSetBy = 'custom'
-        }
+        // 個別設定による変更（TimeRegisterViewからの直接変更）
+        if (startTimeChanged) startTimeSetBy = 'custom'
+        if (endTimeChanged) endTimeSetBy = 'custom'
 
         this.workDays[index] = {
           ...workDay,
