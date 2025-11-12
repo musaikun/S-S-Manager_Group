@@ -30,11 +30,13 @@
             @click="selectJob(job.id)"
           >
             <span class="job-color-dot" :style="{ backgroundColor: job.color }"></span>
-            <span class="job-name">{{ job.name }}</span>
-            <span class="job-status">{{ currentJobId === job.id ? '(選択中)' : '(選択)' }}</span>
+            <div class="job-info">
+              <span class="job-name" :class="getJobNameClass(job.name)">{{ job.name }}</span>
+              <span class="job-status">{{ currentJobId === job.id ? '(選択中)' : '(選択)' }}</span>
+            </div>
           </button>
           <button class="edit-button" @click="editJob(job)" title="編集">
-            編集
+            🖊
           </button>
           <button class="delete-button" @click="deleteJob(job.id)" title="削除">
             ×
@@ -150,6 +152,14 @@ const closeModal = () => {
   editingJob.value = null
   jobName.value = ''
 }
+
+// 文字数に応じてフォントサイズを調整するクラスを返す
+const getJobNameClass = (name: string) => {
+  const length = name.length
+  if (length > 12) return 'name-small'
+  if (length > 8) return 'name-medium'
+  return 'name-normal'
+}
 </script>
 
 <style scoped>
@@ -217,19 +227,19 @@ const closeModal = () => {
 
 .job-button {
   flex: 1;
-  padding: 0.875rem 1.25rem;
+  padding: 0.75rem 1rem;
   border: 2px solid;
   border-radius: 8px;
   background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
   cursor: pointer;
-  font-size: 1rem;
   font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   transition: all 0.25s ease;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   position: relative;
+  min-height: 3.5rem;
 }
 
 .job-button::before {
@@ -254,15 +264,36 @@ const closeModal = () => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.job-name {
+.job-info {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
+}
+
+.job-name {
+  font-weight: 600;
+  line-height: 1.3;
+  word-break: break-all;
+}
+
+.job-name.name-normal {
+  font-size: 1rem;
+}
+
+.job-name.name-medium {
+  font-size: 0.9rem;
+}
+
+.job-name.name-small {
+  font-size: 0.8rem;
 }
 
 .job-status {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #4caf50;
-  margin-left: auto;
   white-space: nowrap;
 }
 
@@ -280,7 +311,7 @@ const closeModal = () => {
 
 .edit-button,
 .delete-button {
-  padding: 0.875rem 1rem;
+  padding: 0.75rem;
   border: 2px solid;
   border-radius: 8px;
   background: white;
@@ -288,16 +319,19 @@ const closeModal = () => {
   transition: all 0.25s ease;
   font-weight: 500;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  min-width: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .edit-button {
   border-color: #2196f3;
-  color: #2196f3;
+  font-size: 1.2rem;
 }
 
 .edit-button:hover {
   background: #2196f3;
-  color: white;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
 }
@@ -311,6 +345,8 @@ const closeModal = () => {
   color: #f44336;
   font-weight: bold;
   border-color: #f44336;
+  font-size: 1.4rem;
+  line-height: 1;
 }
 
 .delete-button:hover {
