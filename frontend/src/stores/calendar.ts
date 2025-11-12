@@ -475,6 +475,19 @@ export const useCalendarStore = defineStore('calendar', {
     },
 
     /**
+     * ジョブを詳細指定で追加（復元時に使用）
+     */
+    addJobWithDetails(job: Job): Job | null {
+      if (this.jobs.length >= 4) {
+        return null // 最大4つまで
+      }
+
+      this.jobs.push(job)
+      this.saveJobsToLocalStorage()
+      return job
+    },
+
+    /**
      * ジョブを更新
      */
     updateJob(jobId: JobId, name: string) {

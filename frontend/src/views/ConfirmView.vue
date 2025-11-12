@@ -405,18 +405,20 @@ const getStatusBadgeClass = (workDay: WorkDay) => {
 
 // シフトデータをLocalStorageに保存
 const saveShiftData = () => {
-  // 各workDayにjobNameを追加（保存時点の掛け持ち先名称を保持）
+  // 各workDayにjobNameとjobColorを追加（保存時点の掛け持ち先名称と色を保持）
   const workDaysWithJobName = workDaysForSubmit.value.map(workDay => {
     if (workDay.jobId !== undefined) {
       const job = calendarStore.getJobById(workDay.jobId)
       return {
         ...workDay,
-        jobName: job?.name || ''
+        jobName: job?.name || '',
+        jobColor: job?.color || '#999'
       }
     } else {
       return {
         ...workDay,
-        jobName: calendarStore.mainStoreDisplayName
+        jobName: calendarStore.mainStoreDisplayName,
+        jobColor: '#FFFFFF'
       }
     }
   })

@@ -206,8 +206,14 @@ const workDaysByJob = computed(() => {
 
     if (!grouped[key]) {
       const job = jobId ? calendarStore.getJobById(jobId) : null
+      // 現在のジョブが見つからない場合は、保存された名前と色を使用
+      const displayJob = job || (day.jobName ? {
+        id: jobId,
+        name: day.jobName,
+        color: day.jobColor || '#999'
+      } : null)
       grouped[key] = {
-        job,
+        job: displayJob,
         workDays: []
       }
     }
@@ -230,8 +236,14 @@ const jobSummaries = computed(() => {
 
     if (!summaries[key]) {
       const job = jobId ? calendarStore.getJobById(jobId) : null
+      // 現在のジョブが見つからない場合は、保存された名前と色を使用
+      const displayJob = job || (day.jobName ? {
+        id: jobId,
+        name: day.jobName,
+        color: day.jobColor || '#999'
+      } : null)
       summaries[key] = {
-        job,
+        job: displayJob,
         workDays: 0,
         totalMinutes: 0
       }
@@ -319,40 +331,79 @@ const toggleFavorite = () => {
   loadShifts()
 }
 
-const createFromBase = () => {
+const createFromBase = async () => {
   if (!selectedShift.value) return
 
   // 現在のカレンダーの月を取得
   const currentYear = calendarStore.currentYear
   const currentMonth = calendarStore.currentMonth
 
-  // 掛け持ち先名称の変更を検出
-  const changedJobs: Array<{ oldName: string; newName: string }> = []
+  // 存在しない掛け持ち先を検出
+  const missingJobs: Array<{ jobId: number; jobName: string; jobColor: string }> = []
+  const jobIdMapping: Record<number, number | undefined> = {} // 旧jobId -> 新jobId のマッピング
+
   selectedShift.value.workDays.forEach(savedDay => {
     if (savedDay.jobId !== undefined && savedDay.jobName) {
       const currentJob = calendarStore.getJobById(savedDay.jobId)
-      if (currentJob && currentJob.name !== savedDay.jobName) {
-        // 既に同じ組み合わせが存在しないか確認（重複を避ける）
-        const exists = changedJobs.some(
-          item => item.oldName === savedDay.jobName && item.newName === currentJob.name
-        )
+      if (!currentJob) {
+        // 存在しない掛け持ち先
+        const exists = missingJobs.some(item => item.jobId === savedDay.jobId)
         if (!exists) {
-          changedJobs.push({ oldName: savedDay.jobName, newName: currentJob.name })
+          missingJobs.push({
+            jobId: savedDay.jobId,
+            jobName: savedDay.jobName,
+            jobColor: savedDay.jobColor || '#999'
+          })
         }
       }
     }
   })
 
-  // 掛け持ち先名称が変更されている場合、確認ダイアログを表示
-  if (changedJobs.length > 0) {
-    let message = '以下の掛け持ち先の名称が変更されています：\n\n'
-    changedJobs.forEach(job => {
-      message += `・保存時: ${job.oldName} → 現在: ${job.newName}\n`
-    })
-    message += '\n現在の設定で復元しますがよろしいですか？'
+  // 存在しない掛け持ち先がある場合の処理
+  if (missingJobs.length > 0) {
+    const canAddNewJob = calendarStore.jobs.length < 4
 
-    if (!confirm(message)) {
-      return
+    for (const missingJob of missingJobs) {
+      if (canAddNewJob && calendarStore.jobs.length < 4) {
+        // 空きがある場合：新規登録
+        const confirmMsg = `掛け持ち先"${missingJob.jobName}"が見つかりません。\n新規登録して復元しますか？`
+        if (!confirm(confirmMsg)) {
+          return // キャンセル
+        }
+
+        // 新規登録
+        const newJob = {
+          id: Date.now() + Math.floor(Math.random() * 1000),
+          name: missingJob.jobName,
+          color: missingJob.jobColor,
+          isActive: true
+        }
+        calendarStore.addJobWithDetails(newJob)
+        jobIdMapping[missingJob.jobId] = newJob.id
+      } else {
+        // 満杯の場合：既存の掛け持ち先を選択
+        let message = `掛け持ち先"${missingJob.jobName}"が見つかりません。\n`
+        message += `掛け持ち先は既に4つ登録されているため、新規登録できません。\n\n`
+        message += `既存の掛け持ち先を選択して上書きしてください：\n\n`
+        calendarStore.jobs.forEach((job, index) => {
+          message += `${index + 1}. ${job.name}\n`
+        })
+        message += `\n番号を入力してください（1-4、キャンセルは0）：`
+
+        const input = prompt(message)
+        if (!input || input === '0') {
+          return // キャンセル
+        }
+
+        const selectedIndex = parseInt(input) - 1
+        if (selectedIndex >= 0 && selectedIndex < calendarStore.jobs.length) {
+          const selectedJob = calendarStore.jobs[selectedIndex]
+          jobIdMapping[missingJob.jobId] = selectedJob.id
+        } else {
+          alert('無効な番号です。')
+          return
+        }
+      }
     }
   }
 
@@ -373,15 +424,11 @@ const createFromBase = () => {
   selectedShift.value.workDays.forEach(savedDay => {
     const targetDayOfWeek = savedDay.dayOfWeek
     const targetWeekNumber = savedDay.weekNumber
-    const savedJobId = savedDay.jobId
+    let savedJobId = savedDay.jobId
 
-    // 掛け持ち先が削除されていないか確認
-    if (savedJobId !== undefined) {
-      const jobExists = calendarStore.getJobById(savedJobId)
-      if (!jobExists) {
-        // 掛け持ち先が削除されている場合はスキップ
-        return
-      }
+    // jobIdMappingを使用して新しいjobIdにマッピング
+    if (savedJobId !== undefined && jobIdMapping[savedJobId] !== undefined) {
+      savedJobId = jobIdMapping[savedJobId]
     }
 
     // 現在の月の全ての日付をチェック
@@ -488,12 +535,17 @@ const createFromBase = () => {
   // 保存されたシフトの時間を適用
   timeRegisterStore.workDays.forEach((workDay, index) => {
     // 同じ曜日・週番号・jobIdの保存されたシフトを探す
-    const matchedSavedDay = selectedShift.value!.workDays.find(
-      savedDay =>
-        savedDay.dayOfWeek === workDay.dayOfWeek &&
+    const matchedSavedDay = selectedShift.value!.workDays.find(savedDay => {
+      // jobIdMappingを考慮
+      let mappedJobId = savedDay.jobId
+      if (savedDay.jobId !== undefined && jobIdMapping[savedDay.jobId] !== undefined) {
+        mappedJobId = jobIdMapping[savedDay.jobId]
+      }
+
+      return savedDay.dayOfWeek === workDay.dayOfWeek &&
         savedDay.weekNumber === workDay.weekNumber &&
-        savedDay.jobId === workDay.jobId
-    )
+        mappedJobId === workDay.jobId
+    })
 
     if (matchedSavedDay) {
       // 時間を適用

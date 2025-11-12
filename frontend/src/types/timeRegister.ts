@@ -57,6 +57,8 @@ export interface WorkDay {
   jobId?: JobId
   /** ジョブ名（保存時点の掛け持ち先名称を保持） */
   jobName?: string
+  /** ジョブ色（保存時点の掛け持ち先の色を保持） */
+  jobColor?: string
 }
 
 /**
