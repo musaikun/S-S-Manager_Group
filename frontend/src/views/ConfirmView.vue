@@ -496,6 +496,9 @@ const generateShiftText = (): string => {
 
 // 保存のみ
 const saveOnly = () => {
+  if (!confirm('このシフトを保存しますか？')) {
+    return
+  }
   saveShiftData()
   closeSubmitModal()
   const jobInfo = getJobInfoForAlert()
@@ -516,6 +519,9 @@ const getJobInfoForAlert = (): string => {
 
 // メール送信
 const submitViaEmail = () => {
+  if (!confirm('このシフトを保存しますか？')) {
+    return
+  }
   const subject = encodeURIComponent('シフト提出')
   const body = encodeURIComponent(generateShiftText())
   window.location.href = `mailto:?subject=${subject}&body=${body}`
@@ -526,6 +532,9 @@ const submitViaEmail = () => {
 
 // LINE送信
 const submitViaLine = () => {
+  if (!confirm('このシフトを保存しますか？')) {
+    return
+  }
   const text = encodeURIComponent(generateShiftText())
   window.open(`https://line.me/R/share?text=${text}`, '_blank')
   saveShiftData()
@@ -535,6 +544,9 @@ const submitViaLine = () => {
 
 // CSVダウンロード
 const downloadCSV = () => {
+  if (!confirm('このシフトを保存しますか？')) {
+    return
+  }
   let csv = '日付,開始時刻,終了時刻,勤務時間,実働時間,設定,掛け持ち先\n'
 
   workDaysForSubmit.value.forEach(day => {
@@ -578,6 +590,9 @@ const downloadCSV = () => {
 
 // クリップボードにコピー
 const copyToClipboard = async () => {
+  if (!confirm('このシフトを保存しますか？')) {
+    return
+  }
   try {
     await navigator.clipboard.writeText(generateShiftText())
     saveShiftData()

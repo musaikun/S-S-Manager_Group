@@ -65,18 +65,17 @@
                   <span class="detail-label">総勤務時間</span>
                   <span class="detail-value">{{ formatMinutesToHours(selectedShift.totalSummary.totalWorkMinutes) }}</span>
                 </div>
-                <!-- 掛け持ち先の内訳 -->
-                <div v-if="jobSummaries.length > 0" class="job-breakdown">
-                  <div class="breakdown-header">内訳</div>
-                  <div v-for="(summary, index) in jobSummaries" :key="index" class="breakdown-row">
-                    <span class="breakdown-label">
-                      <span v-if="summary.job" class="job-color-dot" :style="{ backgroundColor: summary.job.color }"></span>
-                      {{ summary.job ? summary.job.name : calendarStore.mainStoreDisplayName }}
-                    </span>
-                    <span class="breakdown-value">
-                      {{ formatMinutesToHours(summary.totalMinutes) }} / {{ summary.workDays }}日
-                    </span>
-                  </div>
+              </div>
+              <!-- 掛け持ち先の内訳（複数勤務先がある場合のみ） -->
+              <div v-if="jobSummaries.length > 1" class="job-breakdown">
+                <div v-for="(summary, index) in jobSummaries" :key="index" class="breakdown-row">
+                  <span class="breakdown-label">
+                    <span v-if="summary.job" class="job-color-dot" :style="{ backgroundColor: summary.job.color }"></span>
+                    {{ summary.job ? summary.job.name : calendarStore.mainStoreDisplayName }}
+                  </span>
+                  <span class="breakdown-value">
+                    {{ formatMinutesToHours(summary.totalMinutes) }} / {{ summary.workDays }}日
+                  </span>
                 </div>
               </div>
             </div>
@@ -871,40 +870,34 @@ onMounted(() => {
 }
 
 .job-breakdown {
-  margin-top: 1rem;
-  padding-top: 0.75rem;
-  border-top: 1px dashed #e0e0e0;
-}
-
-.breakdown-header {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #667eea;
-  margin-bottom: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0;
 }
 
 .breakdown-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.4rem 0.5rem;
-  margin-bottom: 0.25rem;
-  background: #f8f9fa;
-  border-radius: 6px;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.breakdown-row:last-child {
+  border-bottom: none;
 }
 
 .breakdown-label {
-  font-size: 0.8rem;
-  color: #555;
+  font-size: 0.875rem;
+  color: #666;
   display: flex;
   align-items: center;
   gap: 0.4rem;
 }
 
 .breakdown-value {
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  color: #667eea;
+  color: #333;
 }
 
 .job-color-dot {
