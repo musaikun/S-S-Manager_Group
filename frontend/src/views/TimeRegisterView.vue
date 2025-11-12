@@ -133,9 +133,6 @@
           <div class="legend-item bulk-style">
             <div class="legend-card">一括設定</div>
           </div>
-          <div class="legend-item base-style">
-            <div class="legend-card">過去ベース</div>
-          </div>
         </div>
       </div>
 
@@ -1144,10 +1141,6 @@ const getCardBackgroundClass = (workDay: WorkDay) => {
   // 個別設定が存在する場合は常に黄色（最優先）
   if (workDay.startTimeSetBy === 'custom' || workDay.endTimeSetBy === 'custom') {
     return 'custom-style'
-  }
-  // 過去ベースの設定がある場合
-  if (workDay.startTimeSetBy === 'base' || workDay.endTimeSetBy === 'base') {
-    return 'base-style'
   }
   // 一括設定がある場合
   if (workDay.startTimeSetBy === 'bulk' || workDay.endTimeSetBy === 'bulk') {

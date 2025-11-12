@@ -69,18 +69,17 @@
         <div v-if="jobSummaries.length > 1" class="job-statistics-compact">
           <div class="job-stat-compact-row" v-for="summary in jobSummaries" :key="summary.jobId || 'none'">
             <span
-              v-if="summary.jobId"
               class="job-stat-dot"
-              :style="{ backgroundColor: calendarStore.getJobById(summary.jobId)?.color }"
-            ></span>
-            <span
-              v-else
-              class="job-stat-dot main-store-stat-dot"
+              :style="{
+                backgroundColor: summary.jobId ? calendarStore.getJobById(summary.jobId)?.color : '#FFFFFF',
+                border: summary.jobId ? 'none' : '1.5px solid #666',
+                boxShadow: summary.jobId ? 'none' : '0 0 2px rgba(0, 0, 0, 0.5)'
+              }"
             ></span>
             <span class="job-stat-compact-name">
               {{ summary.jobId ? calendarStore.getJobById(summary.jobId)?.name : calendarStore.mainStoreDisplayName }}
             </span>
-            <span class="job-stat-compact-value">{{ summary.workDays }}日・{{ formatMinutesToHours(summary.totalWorkMinutes) }}</span>
+            <span class="job-stat-compact-value">{{ formatMinutesToHours(summary.totalWorkMinutes) }} / {{ summary.workDays }}日</span>
           </div>
         </div>
 
@@ -868,12 +867,6 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.main-store-stat-dot {
-  background-color: #FFFFFF;
-  border: 1.5px solid #666;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
-}
-
 .job-stat-compact-name {
   font-weight: 600;
   color: #555;
@@ -881,8 +874,8 @@ onMounted(() => {
 }
 
 .job-stat-compact-value {
-  font-weight: 700;
-  color: #667eea;
+  font-weight: 600;
+  color: #333;
 }
 
 /* レスポンシブ */

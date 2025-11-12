@@ -70,7 +70,7 @@
               <div v-if="jobSummaries.length > 1" class="job-breakdown">
                 <div v-for="(summary, index) in jobSummaries" :key="index" class="breakdown-row">
                   <span class="breakdown-label">
-                    <span v-if="summary.job" class="job-color-dot" :style="{ backgroundColor: summary.job.color }"></span>
+                    <span class="job-color-dot" :style="{ backgroundColor: summary.job ? summary.job.color : '#FFFFFF', border: summary.job ? 'none' : '1.5px solid #666', boxShadow: summary.job ? 'none' : '0 0 2px rgba(0, 0, 0, 0.5)' }"></span>
                     {{ summary.job ? summary.job.name : calendarStore.mainStoreDisplayName }}
                   </span>
                   <span class="breakdown-value">
