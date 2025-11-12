@@ -65,6 +65,19 @@
                   <span class="detail-label">総勤務時間</span>
                   <span class="detail-value">{{ formatMinutesToHours(selectedShift.totalSummary.totalWorkMinutes) }}</span>
                 </div>
+                <!-- 掛け持ち先の内訳 -->
+                <div v-if="jobSummaries.length > 0" class="job-breakdown">
+                  <div class="breakdown-header">内訳</div>
+                  <div v-for="(summary, index) in jobSummaries" :key="index" class="breakdown-row">
+                    <span class="breakdown-label">
+                      <span v-if="summary.job" class="job-color-dot" :style="{ backgroundColor: summary.job.color }"></span>
+                      {{ summary.job ? summary.job.name : calendarStore.mainStoreDisplayName }}
+                    </span>
+                    <span class="breakdown-value">
+                      {{ formatMinutesToHours(summary.totalMinutes) }} / {{ summary.workDays }}日
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -204,6 +217,45 @@ const workDaysByJob = computed(() => {
   })
 
   return Object.values(grouped)
+})
+
+// 掛け持ち先ごとの集計
+const jobSummaries = computed(() => {
+  if (!selectedShift.value) return []
+
+  const summaries: Record<string, { job: any; workDays: number; totalMinutes: number }> = {}
+
+  selectedShift.value.workDays.forEach((day) => {
+    const jobId = day.jobId
+    const key = jobId?.toString() || 'none'
+
+    if (!summaries[key]) {
+      const job = jobId ? calendarStore.getJobById(jobId) : null
+      summaries[key] = {
+        job,
+        workDays: 0,
+        totalMinutes: 0
+      }
+    }
+
+    summaries[key].workDays++
+
+    // 勤務時間を計算
+    const [startHour, startMinute] = day.startTime.split(':').map(Number)
+    const [endHour, endMinute] = day.endTime.split(':').map(Number)
+    const startMinutes = startHour * 60 + startMinute
+    let endMinutes = endHour * 60 + endMinute
+
+    // 日跨ぎの場合
+    if (endMinutes < startMinutes) {
+      endMinutes += 24 * 60
+    }
+
+    const workMinutes = endMinutes - startMinutes
+    summaries[key].totalMinutes += workMinutes
+  })
+
+  return Object.values(summaries)
 })
 
 const handleBack = () => {
@@ -816,6 +868,50 @@ onMounted(() => {
   font-size: 0.875rem;
   font-weight: 600;
   color: #333;
+}
+
+.job-breakdown {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #e0e0e0;
+}
+
+.breakdown-header {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #667eea;
+  margin-bottom: 0.5rem;
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0.5rem;
+  margin-bottom: 0.25rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.breakdown-label {
+  font-size: 0.8rem;
+  color: #555;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.breakdown-value {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.job-color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
 }
 
 .job-group {

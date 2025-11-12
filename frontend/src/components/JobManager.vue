@@ -4,7 +4,7 @@
     <div class="accordion-header" @click="toggleAccordion">
       <span class="header-text">
         <span class="header-icon">🔄</span>
-        入力先を切り替え
+        掛け持ち店の登録/選択モード切替
       </span>
       <span class="accordion-icon">{{ isOpen ? '▲' : '▼' }}</span>
     </div>
@@ -56,15 +56,6 @@
       <div v-else class="max-jobs-message">
         最大4つまで登録できます
       </div>
-
-      <!-- 選択解除ボタン -->
-      <button
-        v-if="currentJobId !== null"
-        class="deselect-button"
-        @click="deselectJob"
-      >
-        選択を解除
-      </button>
     </div>
 
     <!-- ジョブ追加/編集モーダル -->
@@ -76,7 +67,7 @@
           type="text"
           placeholder="勤務先の名前"
           class="job-name-input"
-          maxlength="20"
+          maxlength="14"
           @keyup.enter="saveJob"
         />
         <div class="modal-buttons">
@@ -116,10 +107,6 @@ const selectJob = (jobId: JobId) => {
   } else {
     calendarStore.setCurrentJobId(jobId)
   }
-}
-
-const deselectJob = () => {
-  calendarStore.setCurrentJobId(null)
 }
 
 const editJob = (job: Job) => {
@@ -393,33 +380,6 @@ const getJobNameClass = (name: string) => {
   color: #999;
   padding: 0.5rem;
   font-size: 0.9rem;
-}
-
-.deselect-button {
-  width: 100%;
-  padding: 0.875rem 1rem;
-  margin-top: 0.5rem;
-  border: 2px solid #ff9800;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 500;
-  color: #f57c00;
-  transition: all 0.25s ease;
-  box-shadow: 0 2px 4px rgba(255, 152, 0, 0.1);
-}
-
-.deselect-button:hover {
-  background: linear-gradient(135deg, #ffe0b2 0%, #ffcc80 100%);
-  border-color: #f57c00;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(255, 152, 0, 0.2);
-}
-
-.deselect-button:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(255, 152, 0, 0.15);
 }
 
 /* モーダル */
