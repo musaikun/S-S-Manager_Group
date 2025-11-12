@@ -2,7 +2,10 @@
   <div class="job-manager">
     <!-- アコーディオンヘッダー -->
     <div class="accordion-header" @click="toggleAccordion">
-      <span>掛け持ち先追加/選択モード切替</span>
+      <span class="header-text">
+        <span class="header-icon">🔄</span>
+        入力先を切り替え
+      </span>
       <span class="accordion-icon">{{ isOpen ? '▲' : '▼' }}</span>
     </div>
 
@@ -172,6 +175,16 @@ const closeModal = () => {
   background: #e8e8e8;
 }
 
+.header-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-icon {
+  font-size: 1.2rem;
+}
+
 .accordion-icon {
   font-size: 0.8rem;
   color: #666;
@@ -196,26 +209,47 @@ const closeModal = () => {
 
 .job-item.active .job-button {
   font-weight: bold;
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transform: translateY(-1px);
 }
 
 .job-button {
   flex: 1;
-  padding: 0.75rem 1rem;
+  padding: 0.875rem 1.25rem;
   border: 2px solid;
-  border-radius: 6px;
-  background: white;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
   cursor: pointer;
   font-size: 1rem;
+  font-weight: 500;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.job-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
+  pointer-events: none;
 }
 
 .job-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.job-button:active {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .job-color-dot {
@@ -227,45 +261,76 @@ const closeModal = () => {
 
 .edit-button,
 .delete-button {
-  padding: 0.75rem 1rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  padding: 0.875rem 1rem;
+  border: 2px solid;
+  border-radius: 8px;
   background: white;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.edit-button {
+  border-color: #2196f3;
+  color: #2196f3;
 }
 
 .edit-button:hover {
-  background: #e3f2fd;
-  border-color: #2196f3;
+  background: #2196f3;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
+}
+
+.edit-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.2);
 }
 
 .delete-button {
   color: #f44336;
   font-weight: bold;
+  border-color: #f44336;
 }
 
 .delete-button:hover {
-  background: #ffebee;
-  border-color: #f44336;
+  background: #f44336;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(244, 67, 54, 0.3);
+}
+
+.delete-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(244, 67, 54, 0.2);
 }
 
 .add-job-button {
   width: 100%;
-  padding: 0.75rem;
-  border: 2px dashed #ddd;
-  border-radius: 6px;
-  background: white;
+  padding: 0.875rem 1rem;
+  border: 2px dashed #2196f3;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #e3f2fd 0%, #f5f9ff 100%);
   cursor: pointer;
   font-size: 1rem;
-  color: #666;
-  transition: all 0.2s;
+  font-weight: 500;
+  color: #2196f3;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.1);
 }
 
 .add-job-button:hover {
-  border-color: #2196f3;
-  color: #2196f3;
-  background: #f5f5f5;
+  border-color: #1976d2;
+  color: #1976d2;
+  background: linear-gradient(135deg, #bbdefb 0%, #e3f2fd 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.2);
+}
+
+.add-job-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.15);
 }
 
 .max-jobs-message {
@@ -277,18 +342,29 @@ const closeModal = () => {
 
 .deselect-button {
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.875rem 1rem;
   margin-top: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  background: #f5f5f5;
+  border: 2px solid #ff9800;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
   cursor: pointer;
   font-size: 1rem;
-  transition: all 0.2s;
+  font-weight: 500;
+  color: #f57c00;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 4px rgba(255, 152, 0, 0.1);
 }
 
 .deselect-button:hover {
-  background: #e8e8e8;
+  background: linear-gradient(135deg, #ffe0b2 0%, #ffcc80 100%);
+  border-color: #f57c00;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(255, 152, 0, 0.2);
+}
+
+.deselect-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(255, 152, 0, 0.15);
 }
 
 /* モーダル */

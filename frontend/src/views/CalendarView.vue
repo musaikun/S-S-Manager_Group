@@ -7,7 +7,7 @@
       <div class="calendar-card">
         <!-- 選択中ジョブバナー -->
         <div class="current-job-banner" :style="{ backgroundColor: getCurrentJobColor() }">
-          <span class="banner-text" :style="{ color: getCurrentJobTextColor() }">{{ getCurrentJobName() }}を選択しています</span>
+          <span class="banner-text" :style="{ color: getCurrentJobTextColor() }">{{ getCurrentJobName() }}のシフトを入力中</span>
         </div>
 
         <!-- ヘッダー：年月 -->
