@@ -90,6 +90,11 @@ const currentMonth = ref(new Date().getMonth()) // 0-11
 
 // モックシフトデータ（2026年1月）
 const mockShifts = ref([
+  // 過去のシフト
+  { date: '2026-01-02', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
+  { date: '2026-01-03', startTime: '10:00', endTime: '19:00', jobName: '厨房', hours: 8 },
+  { date: '2026-01-05', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
+  // 今後のシフト
   { date: '2026-01-06', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
   { date: '2026-01-07', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
   { date: '2026-01-09', startTime: '10:00', endTime: '19:00', jobName: '厨房', hours: 8 },
