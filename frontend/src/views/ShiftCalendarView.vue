@@ -88,24 +88,24 @@ const weekdays = ['日', '月', '火', '水', '木', '金', '土']
 const currentYear = ref(new Date().getFullYear())
 const currentMonth = ref(new Date().getMonth()) // 0-11
 
-// モックシフトデータ
+// モックシフトデータ（2026年1月）
 const mockShifts = ref([
-  { date: '2025-01-06', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
-  { date: '2025-01-07', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
-  { date: '2025-01-09', startTime: '10:00', endTime: '19:00', jobName: '厨房', hours: 8 },
-  { date: '2025-01-10', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
-  { date: '2025-01-13', startTime: '09:00', endTime: '17:00', jobName: 'カフェ', hours: 7 },
-  { date: '2025-01-14', startTime: '10:00', endTime: '19:00', jobName: '厨房', hours: 8 },
-  { date: '2025-01-16', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
-  { date: '2025-01-17', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
-  { date: '2025-01-20', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
-  { date: '2025-01-21', startTime: '10:00', endTime: '19:00', jobName: '厨房', hours: 8 },
-  { date: '2025-01-23', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
-  { date: '2025-01-24', startTime: '09:00', endTime: '17:00', jobName: 'カフェ', hours: 7 },
-  { date: '2025-01-27', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
-  { date: '2025-01-28', startTime: '10:00', endTime: '19:00', jobName: '厨房', hours: 8 },
-  { date: '2025-01-30', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
-  { date: '2025-01-31', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
+  { date: '2026-01-06', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
+  { date: '2026-01-07', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
+  { date: '2026-01-09', startTime: '10:00', endTime: '19:00', jobName: '厨房', hours: 8 },
+  { date: '2026-01-10', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
+  { date: '2026-01-13', startTime: '09:00', endTime: '17:00', jobName: 'カフェ', hours: 7 },
+  { date: '2026-01-14', startTime: '10:00', endTime: '19:00', jobName: '厨房', hours: 8 },
+  { date: '2026-01-16', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
+  { date: '2026-01-17', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
+  { date: '2026-01-20', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
+  { date: '2026-01-21', startTime: '10:00', endTime: '19:00', jobName: '厨房', hours: 8 },
+  { date: '2026-01-23', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
+  { date: '2026-01-24', startTime: '09:00', endTime: '17:00', jobName: 'カフェ', hours: 7 },
+  { date: '2026-01-27', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
+  { date: '2026-01-28', startTime: '10:00', endTime: '19:00', jobName: '厨房', hours: 8 },
+  { date: '2026-01-30', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
+  { date: '2026-01-31', startTime: '09:00', endTime: '18:00', jobName: 'カフェ', hours: 8 },
 ])
 
 // 現在の期間テキスト
