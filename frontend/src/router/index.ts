@@ -28,6 +28,11 @@ const router = createRouter({
       path: '/history',
       name: 'history',
       component: () => import('../views/HistoryView.vue')
+    },
+    {
+      path: '/shift-calendar',
+      name: 'shift-calendar',
+      component: () => import('../views/ShiftCalendarView.vue')
     }
   ]
 })

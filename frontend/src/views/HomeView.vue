@@ -12,6 +12,9 @@
       <button class="main-btn submit-btn" @click="goToShiftSubmit">
         シフト提出
       </button>
+      <button class="main-btn view-btn" @click="goToShiftView">
+        シフト確認
+      </button>
       <button class="main-btn aggregate-btn" @click="showComingSoon">
         シフト集計
       </button>
@@ -70,6 +73,14 @@ const handleMainStoreSaved = () => {
 const navigateToCalendar = () => {
   navigationStore.setNone() // トランジションを無効化
   router.push('/calendar')
+}
+
+/**
+ * シフト確認画面へ遷移
+ */
+const goToShiftView = () => {
+  navigationStore.setNone() // トランジションを無効化
+  router.push('/shift-calendar')
 }
 
 /**
@@ -207,6 +218,16 @@ const showComingSoon = () => {
 .submit-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
+}
+
+.view-btn {
+  background: linear-gradient(135deg, #3b82f6, #60a5fa);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+.view-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
 }
 
 .aggregate-btn {
