@@ -246,6 +246,13 @@ function goBack() {
 
 onMounted(() => {
   // 初期化処理
+  console.log('=== ShiftCalendarView Mounted ===')
+  console.log('Current Year:', currentYear.value)
+  console.log('Current Month:', currentMonth.value)
+  console.log('Mock Shifts:', mockShifts.value)
+  console.log('Work Days Count:', workDaysCount.value)
+  console.log('Calendar Cells Count:', calendarCells.value.length)
+  console.log('Cells with shifts:', calendarCells.value.filter(c => c.hasShift))
 })
 </script>
 
