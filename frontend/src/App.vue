@@ -97,6 +97,9 @@ const closeSettingsModal = () => {
     <!-- 履歴画面 -->
     <HistoryView v-else-if="route.path === '/history'" />
 
+    <!-- その他のページ（router-viewで表示） -->
+    <router-view v-else-if="!isSliderPage" />
+
     <!-- カレンダー・時間設定・確認画面 -->
     <div v-else-if="isSliderPage" class="slider-layout">
       <!-- ヘッダー（固定） -->
