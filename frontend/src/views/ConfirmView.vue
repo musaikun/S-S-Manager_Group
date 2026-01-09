@@ -159,6 +159,10 @@
                 <span class="method-icon">💾</span>
                 <span class="method-label">保存のみ</span>
               </button>
+              <button @click="downloadPDF" class="method-btn pdf-btn">
+                <span class="method-icon">📄</span>
+                <span class="method-label">PDF作成</span>
+              </button>
               <button @click="submitViaEmail" class="method-btn email-btn">
                 <span class="method-icon">📧</span>
                 <span class="method-label">メールで送信</span>
@@ -197,6 +201,8 @@ import { useTimeCalculation } from '../composables/useTimeCalculation'
 import { useHolidays } from '../composables/useHolidays'
 import type { WorkDay } from '../types/timeRegister'
 import type { JobId } from '../types/calendar'
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
 
 const timeRegisterStore = useTimeRegisterStore()
 const calendarStore = useCalendarStore()
@@ -600,6 +606,130 @@ const copyToClipboard = async () => {
   } catch (err) {
     console.error('クリップボードへのコピーに失敗:', err)
     alert('コピーに失敗しました')
+  }
+}
+
+// PDFダウンロード
+const downloadPDF = () => {
+  try {
+    // A4サイズのPDFを作成
+    const doc = new jsPDF()
+
+    // 提出対象のジョブ名を取得
+    let jobName = 'すべて'
+    if (selectedJobForSubmit.value !== 'all') {
+      jobName = selectedJobForSubmit.value === null
+        ? calendarStore.mainStoreDisplayName
+        : calendarStore.getJobById(selectedJobForSubmit.value)?.name || '不明'
+    }
+
+    // タイトル（日本語対応のためフォントは後で追加予定）
+    const currentYear = new Date().getFullYear()
+    const currentMonth = new Date().getMonth() + 1
+
+    // 英語でタイトル
+    doc.setFontSize(18)
+    doc.text('Shift Schedule', 105, 20, { align: 'center' })
+
+    doc.setFontSize(12)
+    doc.text(`Month: ${currentYear}/${currentMonth}`, 20, 35)
+    doc.text(`Job: ${jobName}`, 20, 45)
+    doc.text(`Submitted: ${new Date().toLocaleDateString('ja-JP')}`, 20, 55)
+
+    // テーブルデータを準備
+    const tableData: any[] = []
+
+    // ジョブごとにグループ分け
+    if (selectedJobForSubmit.value === 'all' && hasMultipleJobs.value) {
+      workDaysByJob.value.forEach(group => {
+        const groupName = group.job?.name || calendarStore.mainStoreDisplayName
+        const groupDays = group.workDays.filter(day => workDaysForSubmit.value.includes(day))
+
+        // グループヘッダー
+        tableData.push([{ content: `[${groupName}]`, colSpan: 4, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }])
+
+        // データ行
+        groupDays.forEach(day => {
+          tableData.push([
+            day.displayDate,
+            `${day.startTime} - ${day.endTime}`,
+            formatMinutesToHours(day.workMinutes),
+            getStatusText(day)
+          ])
+        })
+      })
+    } else {
+      // 単一ジョブまたは掛け持ちなし
+      workDaysForSubmit.value.forEach(day => {
+        tableData.push([
+          day.displayDate,
+          `${day.startTime} - ${day.endTime}`,
+          formatMinutesToHours(day.workMinutes),
+          getStatusText(day)
+        ])
+      })
+    }
+
+    // テーブル描画
+    ;(doc as any).autoTable({
+      startY: 65,
+      head: [['Date', 'Time', 'Hours', 'Status']],
+      body: tableData,
+      theme: 'grid',
+      styles: {
+        font: 'helvetica',
+        fontSize: 9,
+        cellPadding: 3
+      },
+      headStyles: {
+        fillColor: [102, 126, 234],
+        textColor: 255,
+        fontStyle: 'bold'
+      }
+    })
+
+    // 合計統計
+    const finalY = (doc as any).lastAutoTable.finalY + 10
+    const totalDays = workDaysForSubmit.value.length
+    const totalMinutes = workDaysForSubmit.value.reduce((sum, day) => sum + day.workMinutes, 0)
+
+    doc.setFontSize(11)
+    doc.text('Summary:', 20, finalY)
+    doc.text(`Total Days: ${totalDays}`, 20, finalY + 8)
+    doc.text(`Total Hours: ${formatMinutesToHours(totalMinutes)}`, 20, finalY + 16)
+
+    // 備考
+    if (timeRegisterStore.remarks.trim()) {
+      doc.text('Remarks:', 20, finalY + 28)
+      const splitRemarks = doc.splitTextToSize(timeRegisterStore.remarks, 170)
+      doc.setFontSize(9)
+      doc.text(splitRemarks, 20, finalY + 36)
+    }
+
+    // フッター
+    const pageHeight = doc.internal.pageSize.getHeight()
+    doc.setFontSize(8)
+    doc.setTextColor(128)
+    doc.text('Powered by S x S Manager', 105, pageHeight - 10, { align: 'center' })
+    doc.text('https://github.com/musaikun/S-S-Manager_Group', 105, pageHeight - 5, { align: 'center' })
+
+    // ファイル名生成
+    const jobSuffix = selectedJobForSubmit.value !== 'all' ? `_${jobName}` : ''
+    const fileName = `shift_${currentYear}${String(currentMonth).padStart(2, '0')}${jobSuffix}.pdf`
+
+    // PDFダウンロード
+    doc.save(fileName)
+
+    closeSubmitModal()
+    alert('PDFファイルをダウンロードしました\n\n※ 選択データは保持されています。引き続き編集や他の方法での提出が可能です。')
+
+    // ダウンロード後に保存確認
+    if (confirm('このシフトを保存しますか？')) {
+      saveShiftData()
+    }
+  } catch (err) {
+    console.error('PDF生成に失敗:', err)
+    alert('PDF生成に失敗しました')
   }
 }
 
@@ -1042,10 +1172,6 @@ onMounted(() => {
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
   margin-bottom: 1.5rem;
-}
-
-.submit-methods .save-btn {
-  grid-column: 1 / -1;
 }
 
 .method-btn {
