@@ -202,7 +202,7 @@ import { useHolidays } from '../composables/useHolidays'
 import type { WorkDay } from '../types/timeRegister'
 import type { JobId } from '../types/calendar'
 import jsPDF from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 
 const timeRegisterStore = useTimeRegisterStore()
 const calendarStore = useCalendarStore()
@@ -671,7 +671,7 @@ const downloadPDF = () => {
     }
 
     // テーブル描画
-    ;(doc as any).autoTable({
+    autoTable(doc, {
       startY: 65,
       head: [['Date', 'Time', 'Hours', 'Status']],
       body: tableData,
@@ -689,7 +689,7 @@ const downloadPDF = () => {
     })
 
     // 合計統計
-    const finalY = (doc as any).lastAutoTable.finalY + 10
+    const finalY = (doc as any).lastAutoTable?.finalY || 100
     const totalDays = workDaysForSubmit.value.length
     const totalMinutes = workDaysForSubmit.value.reduce((sum, day) => sum + day.workMinutes, 0)
 
