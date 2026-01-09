@@ -608,6 +608,23 @@ const copyToClipboard = async () => {
   }
 }
 
+// 曜日名を取得
+const getDayOfWeekName = (dayOfWeek: number): string => {
+  const dayNames = ['日', '月', '火', '水', '木', '金', '土']
+  return dayNames[dayOfWeek]
+}
+
+// 曜日の色を取得（PDF用）
+const getDayColor = (workDay: WorkDay): string => {
+  if (isHoliday(workDay.date) || workDay.dayOfWeek === 0) {
+    return '#ff4444' // 日曜・祝日は赤
+  }
+  if (workDay.dayOfWeek === 6) {
+    return '#4444ff' // 土曜は青
+  }
+  return '#333' // 平日は黒
+}
+
 // PDFダウンロード
 const downloadPDF = async () => {
   try {
@@ -631,16 +648,16 @@ const downloadPDF = async () => {
           ${currentYear}年${currentMonth}月 シフト希望
         </h1>
         <div style="margin-bottom: 20px; font-size: 14px;">
+          <p style="margin: 5px 0;"><strong>氏名:</strong> <span style="color: #999;">（ログイン機能実装後に表示予定）</span></p>
           <p style="margin: 5px 0;"><strong>勤務先:</strong> ${jobName}</p>
           <p style="margin: 5px 0;"><strong>提出日:</strong> ${new Date().toLocaleDateString('ja-JP')}</p>
         </div>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px;">
           <thead>
             <tr style="background-color: #667eea; color: white;">
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: center;">日付</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: center;">時間</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: center;">勤務時間</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: center;">設定</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: center; width: 30%;">日付</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: center; width: 35%;">出退勤時間</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: center; width: 35%;">勤務時間</th>
             </tr>
           </thead>
           <tbody>
@@ -655,7 +672,7 @@ const downloadPDF = async () => {
         // グループヘッダー
         htmlContent += `
           <tr style="background-color: #f0f0f0;">
-            <td colspan="4" style="border: 1px solid #ddd; padding: 8px; font-weight: bold; text-align: center;">
+            <td colspan="3" style="border: 1px solid #ddd; padding: 8px; font-weight: bold; text-align: center;">
               【${groupName}】
             </td>
           </tr>
@@ -663,12 +680,17 @@ const downloadPDF = async () => {
 
         // データ行
         groupDays.forEach(day => {
+          const dayColor = getDayColor(day)
+          const breakMinutes = includeBreak.value ? calculateBreakTime(day.workMinutes) : 0
+          const actualWorkMinutes = day.workMinutes - breakMinutes
+
           htmlContent += `
             <tr>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${day.displayDate}</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: center; color: ${dayColor};">
+                ${day.displayDate}（${getDayOfWeekName(day.dayOfWeek)}）
+              </td>
               <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${day.startTime} - ${day.endTime}</td>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${formatMinutesToHours(day.workMinutes)}</td>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${getStatusText(day)}</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${formatMinutesToHours(actualWorkMinutes)}</td>
             </tr>
           `
         })
@@ -676,16 +698,27 @@ const downloadPDF = async () => {
     } else {
       // 単一ジョブまたは掛け持ちなし
       workDaysForSubmit.value.forEach(day => {
+        const dayColor = getDayColor(day)
+        const breakMinutes = includeBreak.value ? calculateBreakTime(day.workMinutes) : 0
+        const actualWorkMinutes = day.workMinutes - breakMinutes
+
         htmlContent += `
           <tr>
-            <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${day.displayDate}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: center; color: ${dayColor};">
+              ${day.displayDate}（${getDayOfWeekName(day.dayOfWeek)}）
+            </td>
             <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${day.startTime} - ${day.endTime}</td>
-            <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${formatMinutesToHours(day.workMinutes)}</td>
-            <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${getStatusText(day)}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${formatMinutesToHours(actualWorkMinutes)}</td>
           </tr>
         `
       })
     }
+
+    // 合計勤務時間（休憩時間を引いた実働時間）
+    const totalBreakMinutes = includeBreak.value
+      ? workDaysForSubmit.value.reduce((sum, day) => sum + calculateBreakTime(day.workMinutes), 0)
+      : 0
+    const totalActualWorkMinutes = totalMinutes - totalBreakMinutes
 
     htmlContent += `
           </tbody>
@@ -693,7 +726,7 @@ const downloadPDF = async () => {
         <div style="margin: 20px 0; padding: 15px; background-color: #f8f9ff; border-radius: 8px;">
           <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">【合計】</h3>
           <p style="margin: 5px 0; font-size: 14px;"><strong>勤務日数:</strong> ${totalDays}日</p>
-          <p style="margin: 5px 0; font-size: 14px;"><strong>総勤務時間:</strong> ${formatMinutesToHours(totalMinutes)}</p>
+          <p style="margin: 5px 0; font-size: 14px;"><strong>総勤務時間:</strong> ${formatMinutesToHours(totalActualWorkMinutes)}</p>
         </div>
     `
 
@@ -707,9 +740,25 @@ const downloadPDF = async () => {
       `
     }
 
+    // 転記用URL（プレースホルダー）
+    htmlContent += `
+        <div style="margin: 20px 0; padding: 15px; background-color: #e8f5e9; border-radius: 8px;">
+          <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">【シフト情報転記用URL】</h3>
+          <p style="margin: 0; font-size: 12px; color: #999;">（管理者用アプリ実装後に表示予定）</p>
+        </div>
+    `
+
+    // 管理者用アプリ宣伝（プレースホルダー）
+    htmlContent += `
+        <div style="margin: 20px 0; padding: 15px; background-color: #fff3e0; border-radius: 8px;">
+          <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">【管理者様へ】</h3>
+          <p style="margin: 0; font-size: 12px; color: #999;">（管理者用アプリ実装後に宣伝文言・URL・QRコードを表示予定）</p>
+        </div>
+    `
+
     htmlContent += `
         <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #999; font-size: 10px;">
-          <p style="margin: 5px 0;">Powered by S×S Manager</p>
+          <p style="margin: 5px 0;">© 2026 S×S Manager - All Rights Reserved</p>
           <p style="margin: 5px 0;">https://github.com/musaikun/S-S-Manager_Group</p>
         </div>
       </div>
