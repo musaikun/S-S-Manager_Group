@@ -201,8 +201,7 @@ import { useTimeCalculation } from '../composables/useTimeCalculation'
 import { useHolidays } from '../composables/useHolidays'
 import type { WorkDay } from '../types/timeRegister'
 import type { JobId } from '../types/calendar'
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import html2pdf from 'html2pdf.js'
 
 const timeRegisterStore = useTimeRegisterStore()
 const calendarStore = useCalendarStore()
@@ -610,15 +609,8 @@ const copyToClipboard = async () => {
 }
 
 // PDFダウンロード
-const downloadPDF = () => {
+const downloadPDF = async () => {
   try {
-    // A4サイズのPDFを作成（日本語フォントを使用するためのオプション）
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    })
-
     // 提出対象のジョブ名を取得
     let jobName = 'すべて'
     if (selectedJobForSubmit.value !== 'all') {
@@ -629,19 +621,30 @@ const downloadPDF = () => {
 
     const currentYear = new Date().getFullYear()
     const currentMonth = new Date().getMonth() + 1
+    const totalDays = workDaysForSubmit.value.length
+    const totalMinutes = workDaysForSubmit.value.reduce((sum, day) => sum + day.workMinutes, 0)
 
-    // タイトル（日本語）
-    doc.setFontSize(18)
-    // 日本語はASCII文字のみを使用して表示
-    const title = `${currentYear}年${currentMonth}月 シフト希望`
-    doc.text(title, 105, 20, { align: 'center' })
-
-    doc.setFontSize(12)
-    doc.text(`勤務先: ${jobName}`, 20, 35)
-    doc.text(`提出日: ${new Date().toLocaleDateString('ja-JP')}`, 20, 45)
-
-    // テーブルデータを準備
-    const tableData: any[] = []
+    // HTMLコンテンツを作成
+    let htmlContent = `
+      <div style="font-family: 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif; padding: 20px; max-width: 800px;">
+        <h1 style="text-align: center; color: #667eea; font-size: 24px; margin-bottom: 10px;">
+          ${currentYear}年${currentMonth}月 シフト希望
+        </h1>
+        <div style="margin-bottom: 20px; font-size: 14px;">
+          <p style="margin: 5px 0;"><strong>勤務先:</strong> ${jobName}</p>
+          <p style="margin: 5px 0;"><strong>提出日:</strong> ${new Date().toLocaleDateString('ja-JP')}</p>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px;">
+          <thead>
+            <tr style="background-color: #667eea; color: white;">
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: center;">日付</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: center;">時間</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: center;">勤務時間</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: center;">設定</th>
+            </tr>
+          </thead>
+          <tbody>
+    `
 
     // ジョブごとにグループ分け
     if (selectedJobForSubmit.value === 'all' && hasMultipleJobs.value) {
@@ -650,90 +653,91 @@ const downloadPDF = () => {
         const groupDays = group.workDays.filter(day => workDaysForSubmit.value.includes(day))
 
         // グループヘッダー
-        tableData.push([{ content: `[${groupName}]`, colSpan: 4, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }])
+        htmlContent += `
+          <tr style="background-color: #f0f0f0;">
+            <td colspan="4" style="border: 1px solid #ddd; padding: 8px; font-weight: bold; text-align: center;">
+              【${groupName}】
+            </td>
+          </tr>
+        `
 
         // データ行
         groupDays.forEach(day => {
-          tableData.push([
-            day.displayDate,
-            `${day.startTime} - ${day.endTime}`,
-            formatMinutesToHours(day.workMinutes),
-            getStatusText(day)
-          ])
+          htmlContent += `
+            <tr>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${day.displayDate}</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${day.startTime} - ${day.endTime}</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${formatMinutesToHours(day.workMinutes)}</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${getStatusText(day)}</td>
+            </tr>
+          `
         })
       })
     } else {
       // 単一ジョブまたは掛け持ちなし
       workDaysForSubmit.value.forEach(day => {
-        tableData.push([
-          day.displayDate,
-          `${day.startTime} - ${day.endTime}`,
-          formatMinutesToHours(day.workMinutes),
-          getStatusText(day)
-        ])
+        htmlContent += `
+          <tr>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${day.displayDate}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${day.startTime} - ${day.endTime}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${formatMinutesToHours(day.workMinutes)}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${getStatusText(day)}</td>
+          </tr>
+        `
       })
     }
 
-    // テーブル描画
-    autoTable(doc, {
-      startY: 55,
-      head: [['日付', '時間', '勤務時間', '設定']],
-      body: tableData,
-      theme: 'grid',
-      styles: {
-        font: 'helvetica',
-        fontSize: 9,
-        cellPadding: 3,
-        halign: 'center'
-      },
-      headStyles: {
-        fillColor: [102, 126, 234],
-        textColor: 255,
-        fontStyle: 'bold',
-        halign: 'center'
-      },
-      columnStyles: {
-        0: { cellWidth: 40 },
-        1: { cellWidth: 50 },
-        2: { cellWidth: 30 },
-        3: { cellWidth: 30 }
-      }
-    })
-
-    // 合計統計
-    const finalY = (doc as any).lastAutoTable?.finalY || 100
-    const totalDays = workDaysForSubmit.value.length
-    const totalMinutes = workDaysForSubmit.value.reduce((sum, day) => sum + day.workMinutes, 0)
-
-    doc.setFontSize(11)
-    doc.setTextColor(0)
-    doc.text('【合計】', 20, finalY + 10)
-    doc.setFontSize(10)
-    doc.text(`勤務日数: ${totalDays}日`, 20, finalY + 18)
-    doc.text(`総勤務時間: ${formatMinutesToHours(totalMinutes)}`, 20, finalY + 26)
+    htmlContent += `
+          </tbody>
+        </table>
+        <div style="margin: 20px 0; padding: 15px; background-color: #f8f9ff; border-radius: 8px;">
+          <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">【合計】</h3>
+          <p style="margin: 5px 0; font-size: 14px;"><strong>勤務日数:</strong> ${totalDays}日</p>
+          <p style="margin: 5px 0; font-size: 14px;"><strong>総勤務時間:</strong> ${formatMinutesToHours(totalMinutes)}</p>
+        </div>
+    `
 
     // 備考
     if (timeRegisterStore.remarks.trim()) {
-      doc.setFontSize(11)
-      doc.text('【備考】', 20, finalY + 38)
-      const splitRemarks = doc.splitTextToSize(timeRegisterStore.remarks, 170)
-      doc.setFontSize(9)
-      doc.text(splitRemarks, 20, finalY + 46)
+      htmlContent += `
+        <div style="margin: 20px 0; padding: 15px; background-color: #fff9e6; border-radius: 8px;">
+          <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">【備考】</h3>
+          <p style="margin: 0; font-size: 12px; white-space: pre-wrap;">${timeRegisterStore.remarks}</p>
+        </div>
+      `
     }
 
-    // フッター
-    const pageHeight = doc.internal.pageSize.getHeight()
-    doc.setFontSize(8)
-    doc.setTextColor(128)
-    doc.text('Powered by S x S Manager', 105, pageHeight - 10, { align: 'center' })
-    doc.text('https://github.com/musaikun/S-S-Manager_Group', 105, pageHeight - 5, { align: 'center' })
+    htmlContent += `
+        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #999; font-size: 10px;">
+          <p style="margin: 5px 0;">Powered by S×S Manager</p>
+          <p style="margin: 5px 0;">https://github.com/musaikun/S-S-Manager_Group</p>
+        </div>
+      </div>
+    `
+
+    // 一時的なdiv要素を作成
+    const element = document.createElement('div')
+    element.innerHTML = htmlContent
+    document.body.appendChild(element)
 
     // ファイル名生成
     const jobSuffix = selectedJobForSubmit.value !== 'all' ? `_${jobName}` : ''
     const fileName = `shift_${currentYear}${String(currentMonth).padStart(2, '0')}${jobSuffix}.pdf`
 
-    // PDFダウンロード
-    doc.save(fileName)
+    // PDF生成オプション
+    const opt = {
+      margin: 10,
+      filename: fileName,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }
+
+    // PDFを生成してダウンロード
+    await html2pdf().set(opt).from(element).save()
+
+    // 一時要素を削除
+    document.body.removeChild(element)
 
     closeSubmitModal()
     alert('PDFファイルをダウンロードしました\n\n※ 選択データは保持されています。引き続き編集や他の方法での提出が可能です。')
