@@ -612,8 +612,12 @@ const copyToClipboard = async () => {
 // PDFダウンロード
 const downloadPDF = () => {
   try {
-    // A4サイズのPDFを作成
-    const doc = new jsPDF()
+    // A4サイズのPDFを作成（日本語フォントを使用するためのオプション）
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    })
 
     // 提出対象のジョブ名を取得
     let jobName = 'すべて'
@@ -623,18 +627,18 @@ const downloadPDF = () => {
         : calendarStore.getJobById(selectedJobForSubmit.value)?.name || '不明'
     }
 
-    // タイトル（日本語対応のためフォントは後で追加予定）
     const currentYear = new Date().getFullYear()
     const currentMonth = new Date().getMonth() + 1
 
-    // 英語でタイトル
+    // タイトル（日本語）
     doc.setFontSize(18)
-    doc.text('Shift Schedule', 105, 20, { align: 'center' })
+    // 日本語はASCII文字のみを使用して表示
+    const title = `${currentYear}年${currentMonth}月 シフト希望`
+    doc.text(title, 105, 20, { align: 'center' })
 
     doc.setFontSize(12)
-    doc.text(`Month: ${currentYear}/${currentMonth}`, 20, 35)
-    doc.text(`Job: ${jobName}`, 20, 45)
-    doc.text(`Submitted: ${new Date().toLocaleDateString('ja-JP')}`, 20, 55)
+    doc.text(`勤務先: ${jobName}`, 20, 35)
+    doc.text(`提出日: ${new Date().toLocaleDateString('ja-JP')}`, 20, 45)
 
     // テーブルデータを準備
     const tableData: any[] = []
@@ -672,19 +676,27 @@ const downloadPDF = () => {
 
     // テーブル描画
     autoTable(doc, {
-      startY: 65,
-      head: [['Date', 'Time', 'Hours', 'Status']],
+      startY: 55,
+      head: [['日付', '時間', '勤務時間', '設定']],
       body: tableData,
       theme: 'grid',
       styles: {
         font: 'helvetica',
         fontSize: 9,
-        cellPadding: 3
+        cellPadding: 3,
+        halign: 'center'
       },
       headStyles: {
         fillColor: [102, 126, 234],
         textColor: 255,
-        fontStyle: 'bold'
+        fontStyle: 'bold',
+        halign: 'center'
+      },
+      columnStyles: {
+        0: { cellWidth: 40 },
+        1: { cellWidth: 50 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 30 }
       }
     })
 
@@ -694,16 +706,19 @@ const downloadPDF = () => {
     const totalMinutes = workDaysForSubmit.value.reduce((sum, day) => sum + day.workMinutes, 0)
 
     doc.setFontSize(11)
-    doc.text('Summary:', 20, finalY)
-    doc.text(`Total Days: ${totalDays}`, 20, finalY + 8)
-    doc.text(`Total Hours: ${formatMinutesToHours(totalMinutes)}`, 20, finalY + 16)
+    doc.setTextColor(0)
+    doc.text('【合計】', 20, finalY + 10)
+    doc.setFontSize(10)
+    doc.text(`勤務日数: ${totalDays}日`, 20, finalY + 18)
+    doc.text(`総勤務時間: ${formatMinutesToHours(totalMinutes)}`, 20, finalY + 26)
 
     // 備考
     if (timeRegisterStore.remarks.trim()) {
-      doc.text('Remarks:', 20, finalY + 28)
+      doc.setFontSize(11)
+      doc.text('【備考】', 20, finalY + 38)
       const splitRemarks = doc.splitTextToSize(timeRegisterStore.remarks, 170)
       doc.setFontSize(9)
-      doc.text(splitRemarks, 20, finalY + 36)
+      doc.text(splitRemarks, 20, finalY + 46)
     }
 
     // フッター
