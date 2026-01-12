@@ -27,27 +27,46 @@ onMounted(async () => {
   const liffId = import.meta.env.VITE_LIFF_ID
   const appUrl = import.meta.env.VITE_APP_URL
 
+  console.log('🔍 LIFF Debug Info:')
+  console.log('  LIFF ID:', liffId)
+  console.log('  App URL:', appUrl)
+  console.log('  User Agent:', navigator.userAgent)
+
   // LIFF IDとApp URLが設定されている場合のみ処理
   if (liffId && appUrl) {
     try {
+      console.log('🚀 Initializing LIFF...')
       // LIFF初期化
       await liff.init({ liffId })
+      console.log('✅ LIFF initialized successfully')
 
       // LINE内ブラウザで開かれている場合
-      if (liff.isInClient()) {
+      const isInClient = liff.isInClient()
+      console.log('  Is in LINE client?:', isInClient)
+
+      if (isInClient) {
         // 現在のパスを保持してリダイレクトURLを作成
         const currentPath = route.fullPath
         const redirectUrl = `${appUrl}${currentPath}`
+
+        console.log('📱 Opening external browser...')
+        console.log('  Redirect URL:', redirectUrl)
 
         // 外部ブラウザで開く
         liff.openWindow({
           url: redirectUrl,
           external: true
         })
+
+        console.log('✅ External browser should open now')
+      } else {
+        console.log('ℹ️ Not in LINE client, skipping redirect')
       }
     } catch (error) {
-      console.error('LIFF initialization failed:', error)
+      console.error('❌ LIFF initialization failed:', error)
     }
+  } else {
+    console.log('⚠️ LIFF ID or App URL not configured')
   }
 })
 
