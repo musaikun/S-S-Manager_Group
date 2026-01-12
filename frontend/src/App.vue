@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import PageSlider from './components/PageSlider.vue'
@@ -20,6 +20,22 @@ const timeRegisterStore = useTimeRegisterStore()
 const { workDays, totalSummary } = storeToRefs(timeRegisterStore)
 
 const showSettingsModal = ref(false)
+
+// LINEブラウザ検出と外部ブラウザへのリダイレクト
+onMounted(() => {
+  const isLineApp = /Line/i.test(navigator.userAgent)
+  const appUrl = import.meta.env.VITE_APP_URL
+
+  // LINEブラウザで開かれており、かつ環境変数が設定されている場合
+  if (isLineApp && appUrl) {
+    // 現在のパスを保持してリダイレクト
+    const currentPath = route.fullPath
+    const redirectUrl = `${appUrl}${currentPath}`
+
+    // 外部ブラウザで開く
+    window.location.href = redirectUrl
+  }
+})
 
 // スライド対象のページ
 const sliderPages = [
