@@ -782,11 +782,24 @@ const downloadPDF = async () => {
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     }
 
-    // PDFを生成してダウンロード
-    await html2pdf().set(opt).from(element).save()
+    // PDFを生成してBlobを取得
+    const pdfBlob = await html2pdf().set(opt).from(element).output('blob')
 
     // 一時要素を削除
     document.body.removeChild(element)
+
+    // Blobからダウンロードリンクを作成（モバイル対応）
+    const blobUrl = URL.createObjectURL(pdfBlob)
+    const downloadLink = document.createElement('a')
+    downloadLink.href = blobUrl
+    downloadLink.download = fileName
+    downloadLink.style.display = 'none'
+    document.body.appendChild(downloadLink)
+    downloadLink.click()
+    document.body.removeChild(downloadLink)
+
+    // メモリ解放
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 100)
 
     closeSubmitModal()
     alert('PDFファイルをダウンロードしました\n\n※ 選択データは保持されています。引き続き編集や他の方法での提出が可能です。')
