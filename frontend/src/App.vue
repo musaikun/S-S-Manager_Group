@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
+import liff from '@line/liff'
 import PageSlider from './components/PageSlider.vue'
 import ProgressIndicator from './components/ProgressIndicator.vue'
 import SettingsModal from './components/SettingsModal.vue'
@@ -22,18 +23,31 @@ const { workDays, totalSummary } = storeToRefs(timeRegisterStore)
 const showSettingsModal = ref(false)
 
 // LINEブラウザ検出と外部ブラウザへのリダイレクト
-onMounted(() => {
-  const isLineApp = /Line/i.test(navigator.userAgent)
+onMounted(async () => {
+  const liffId = import.meta.env.VITE_LIFF_ID
   const appUrl = import.meta.env.VITE_APP_URL
 
-  // LINEブラウザで開かれており、かつ環境変数が設定されている場合
-  if (isLineApp && appUrl) {
-    // 現在のパスを保持してリダイレクト
-    const currentPath = route.fullPath
-    const redirectUrl = `${appUrl}${currentPath}`
+  // LIFF IDとApp URLが設定されている場合のみ処理
+  if (liffId && appUrl) {
+    try {
+      // LIFF初期化
+      await liff.init({ liffId })
 
-    // 外部ブラウザで開く
-    window.location.href = redirectUrl
+      // LINE内ブラウザで開かれている場合
+      if (liff.isInClient()) {
+        // 現在のパスを保持してリダイレクトURLを作成
+        const currentPath = route.fullPath
+        const redirectUrl = `${appUrl}${currentPath}`
+
+        // 外部ブラウザで開く
+        liff.openWindow({
+          url: redirectUrl,
+          external: true
+        })
+      }
+    } catch (error) {
+      console.error('LIFF initialization failed:', error)
+    }
   }
 })
 
