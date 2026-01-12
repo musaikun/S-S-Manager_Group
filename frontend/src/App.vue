@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
+import liff from '@line/liff'
 import PageSlider from './components/PageSlider.vue'
 import ProgressIndicator from './components/ProgressIndicator.vue'
 import SettingsModal from './components/SettingsModal.vue'
@@ -20,6 +21,44 @@ const timeRegisterStore = useTimeRegisterStore()
 const { workDays, totalSummary } = storeToRefs(timeRegisterStore)
 
 const showSettingsModal = ref(false)
+const showLineRedirectModal = ref(false)
+const redirectUrl = ref('')
+
+// LINEブラウザ検出
+onMounted(async () => {
+  const liffId = import.meta.env.VITE_LIFF_ID
+  const appUrl = import.meta.env.VITE_APP_URL
+
+  // LIFF IDとApp URLが設定されている場合のみ処理
+  if (liffId && appUrl) {
+    try {
+      // LIFF初期化
+      await liff.init({ liffId })
+
+      // LINE内ブラウザで開かれている場合
+      if (liff.isInClient()) {
+        // 現在のパスを保持してリダイレクトURLを作成
+        const currentPath = route.fullPath
+        redirectUrl.value = `${appUrl}${currentPath}`
+
+        // モーダル表示
+        showLineRedirectModal.value = true
+      }
+    } catch (error) {
+      console.error('LIFF initialization failed:', error)
+    }
+  }
+})
+
+// 外部ブラウザで開く
+const openExternalBrowser = () => {
+  if (redirectUrl.value) {
+    liff.openWindow({
+      url: redirectUrl.value,
+      external: true
+    })
+  }
+}
 
 // スライド対象のページ
 const sliderPages = [
@@ -97,6 +136,9 @@ const closeSettingsModal = () => {
     <!-- 履歴画面 -->
     <HistoryView v-else-if="route.path === '/history'" />
 
+    <!-- その他のページ（router-viewで表示） -->
+    <router-view v-else-if="!isSliderPage" />
+
     <!-- カレンダー・時間設定・確認画面 -->
     <div v-else-if="isSliderPage" class="slider-layout">
       <!-- ヘッダー（固定） -->
@@ -131,6 +173,24 @@ const closeSettingsModal = () => {
 
     <!-- 設定モーダル -->
     <SettingsModal :isOpen="showSettingsModal" @close="closeSettingsModal" />
+
+    <!-- LINEブラウザリダイレクトモーダル -->
+    <div v-if="showLineRedirectModal" class="line-redirect-overlay">
+      <div class="line-redirect-modal">
+        <div class="line-redirect-icon">🌐</div>
+        <h2 class="line-redirect-title">ブラウザで開く必要があります</h2>
+        <p class="line-redirect-message">
+          このアプリは一部の機能（PDFダウンロードなど）を使うため、<br>
+          <strong>Chrome</strong> などの外部ブラウザで開く必要があります。
+        </p>
+        <button @click="openExternalBrowser" class="line-redirect-button">
+          Chromeで開く
+        </button>
+        <p class="line-redirect-note">
+          ※ タップ後、ブラウザの選択画面が表示されます
+        </p>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -351,5 +411,106 @@ body {
   .slider-layout {
     max-width: 100%;
   }
+}
+
+/* LINEリダイレクトモーダル */
+.line-redirect-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+
+.line-redirect-modal {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.line-redirect-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.line-redirect-title {
+  color: #333;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.line-redirect-message {
+  color: #666;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+.line-redirect-message strong {
+  color: #667eea;
+  font-weight: 700;
+}
+
+.line-redirect-button {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 1rem 2.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.line-redirect-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.line-redirect-button:active {
+  transform: translateY(0);
+}
+
+.line-redirect-note {
+  color: #999;
+  font-size: 0.875rem;
+  margin: 0;
 }
 </style>

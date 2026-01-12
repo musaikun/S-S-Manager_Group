@@ -159,6 +159,10 @@
                 <span class="method-icon">💾</span>
                 <span class="method-label">保存のみ</span>
               </button>
+              <button @click="downloadPDF" class="method-btn pdf-btn">
+                <span class="method-icon">📄</span>
+                <span class="method-label">PDF作成</span>
+              </button>
               <button @click="submitViaEmail" class="method-btn email-btn">
                 <span class="method-icon">📧</span>
                 <span class="method-label">メールで送信</span>
@@ -197,6 +201,7 @@ import { useTimeCalculation } from '../composables/useTimeCalculation'
 import { useHolidays } from '../composables/useHolidays'
 import type { WorkDay } from '../types/timeRegister'
 import type { JobId } from '../types/calendar'
+import html2pdf from 'html2pdf.js'
 
 const timeRegisterStore = useTimeRegisterStore()
 const calendarStore = useCalendarStore()
@@ -600,6 +605,212 @@ const copyToClipboard = async () => {
   } catch (err) {
     console.error('クリップボードへのコピーに失敗:', err)
     alert('コピーに失敗しました')
+  }
+}
+
+// 曜日名を取得
+const getDayOfWeekName = (dayOfWeek: number): string => {
+  const dayNames = ['日', '月', '火', '水', '木', '金', '土']
+  return dayNames[dayOfWeek]
+}
+
+// 曜日の色を取得（PDF用）
+const getDayColor = (workDay: WorkDay): string => {
+  if (isHoliday(workDay.date) || workDay.dayOfWeek === 0) {
+    return '#ff4444' // 日曜・祝日は赤
+  }
+  if (workDay.dayOfWeek === 6) {
+    return '#4444ff' // 土曜は青
+  }
+  return '#333' // 平日は黒
+}
+
+// PDFダウンロード
+const downloadPDF = async () => {
+  try {
+    // 提出対象のジョブ名を取得
+    let jobName = 'すべて'
+    if (selectedJobForSubmit.value !== 'all') {
+      jobName = selectedJobForSubmit.value === null
+        ? calendarStore.mainStoreDisplayName
+        : calendarStore.getJobById(selectedJobForSubmit.value)?.name || '不明'
+    }
+
+    const currentYear = new Date().getFullYear()
+    const currentMonth = new Date().getMonth() + 1
+    const totalDays = workDaysForSubmit.value.length
+    const totalMinutes = workDaysForSubmit.value.reduce((sum, day) => sum + day.workMinutes, 0)
+
+    // HTMLコンテンツを作成
+    let htmlContent = `
+      <div style="font-family: 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif; padding: 20px; max-width: 800px;">
+        <h1 style="text-align: center; color: #667eea; font-size: 24px; margin-bottom: 10px;">
+          ${currentYear}年${currentMonth}月 シフト希望
+        </h1>
+        <div style="margin-bottom: 20px; font-size: 14px;">
+          <p style="margin: 5px 0;"><strong>氏名:</strong> <span style="color: #999;">（ログイン機能実装後に表示予定）</span></p>
+          <p style="margin: 5px 0;"><strong>勤務先:</strong> ${jobName}</p>
+          <p style="margin: 5px 0;"><strong>提出日:</strong> ${new Date().toLocaleDateString('ja-JP')}</p>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px;">
+          <thead>
+            <tr style="background-color: #667eea; color: white;">
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: center; width: 30%;">日付</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: center; width: 35%;">出退勤時間</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: center; width: 35%;">勤務時間</th>
+            </tr>
+          </thead>
+          <tbody>
+    `
+
+    // ジョブごとにグループ分け
+    if (selectedJobForSubmit.value === 'all' && hasMultipleJobs.value) {
+      workDaysByJob.value.forEach(group => {
+        const groupName = group.job?.name || calendarStore.mainStoreDisplayName
+        const groupDays = group.workDays.filter(day => workDaysForSubmit.value.includes(day))
+
+        // グループヘッダー
+        htmlContent += `
+          <tr style="background-color: #f0f0f0;">
+            <td colspan="3" style="border: 1px solid #ddd; padding: 8px; font-weight: bold; text-align: center;">
+              【${groupName}】
+            </td>
+          </tr>
+        `
+
+        // データ行
+        groupDays.forEach(day => {
+          const dayColor = getDayColor(day)
+          const breakMinutes = includeBreak.value ? calculateBreakTime(day.workMinutes) : 0
+          const actualWorkMinutes = day.workMinutes - breakMinutes
+
+          htmlContent += `
+            <tr>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: center; color: ${dayColor};">
+                ${day.displayDate}（${getDayOfWeekName(day.dayOfWeek)}）
+              </td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${day.startTime} - ${day.endTime}</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${formatMinutesToHours(actualWorkMinutes)}</td>
+            </tr>
+          `
+        })
+      })
+    } else {
+      // 単一ジョブまたは掛け持ちなし
+      workDaysForSubmit.value.forEach(day => {
+        const dayColor = getDayColor(day)
+        const breakMinutes = includeBreak.value ? calculateBreakTime(day.workMinutes) : 0
+        const actualWorkMinutes = day.workMinutes - breakMinutes
+
+        htmlContent += `
+          <tr>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: center; color: ${dayColor};">
+              ${day.displayDate}（${getDayOfWeekName(day.dayOfWeek)}）
+            </td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${day.startTime} - ${day.endTime}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${formatMinutesToHours(actualWorkMinutes)}</td>
+          </tr>
+        `
+      })
+    }
+
+    // 合計勤務時間（休憩時間を引いた実働時間）
+    const totalBreakMinutes = includeBreak.value
+      ? workDaysForSubmit.value.reduce((sum, day) => sum + calculateBreakTime(day.workMinutes), 0)
+      : 0
+    const totalActualWorkMinutes = totalMinutes - totalBreakMinutes
+
+    htmlContent += `
+          </tbody>
+        </table>
+        <div style="margin: 20px 0; padding: 15px; background-color: #f8f9ff; border-radius: 8px;">
+          <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">【合計】</h3>
+          <p style="margin: 5px 0; font-size: 14px;"><strong>勤務日数:</strong> ${totalDays}日</p>
+          <p style="margin: 5px 0; font-size: 14px;"><strong>総勤務時間:</strong> ${formatMinutesToHours(totalActualWorkMinutes)}</p>
+        </div>
+    `
+
+    // 備考
+    if (timeRegisterStore.remarks.trim()) {
+      htmlContent += `
+        <div style="margin: 20px 0; padding: 15px; background-color: #fff9e6; border-radius: 8px;">
+          <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">【備考】</h3>
+          <p style="margin: 0; font-size: 12px; white-space: pre-wrap;">${timeRegisterStore.remarks}</p>
+        </div>
+      `
+    }
+
+    // 転記用URL（プレースホルダー）
+    htmlContent += `
+        <div style="margin: 20px 0; padding: 15px; background-color: #e8f5e9; border-radius: 8px;">
+          <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">【シフト情報転記用URL】</h3>
+          <p style="margin: 0; font-size: 12px; color: #999;">（管理者用アプリ実装後に表示予定）</p>
+        </div>
+    `
+
+    // 管理者用アプリ宣伝（プレースホルダー）
+    htmlContent += `
+        <div style="margin: 20px 0; padding: 15px; background-color: #fff3e0; border-radius: 8px;">
+          <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">【管理者様へ】</h3>
+          <p style="margin: 0; font-size: 12px; color: #999;">（管理者用アプリ実装後に宣伝文言・URL・QRコードを表示予定）</p>
+        </div>
+    `
+
+    htmlContent += `
+        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #999; font-size: 10px;">
+          <p style="margin: 5px 0;">© 2026 S×S Manager - All Rights Reserved</p>
+          <p style="margin: 5px 0;">https://github.com/musaikun/S-S-Manager_Group</p>
+        </div>
+      </div>
+    `
+
+    // 一時的なdiv要素を作成
+    const element = document.createElement('div')
+    element.innerHTML = htmlContent
+    document.body.appendChild(element)
+
+    // ファイル名生成
+    const jobSuffix = selectedJobForSubmit.value !== 'all' ? `_${jobName}` : ''
+    const fileName = `shift_${currentYear}${String(currentMonth).padStart(2, '0')}${jobSuffix}.pdf`
+
+    // PDF生成オプション
+    const opt = {
+      margin: 10,
+      filename: fileName,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }
+
+    // PDFを生成してBlobを取得
+    const pdfBlob = await html2pdf().set(opt).from(element).output('blob')
+
+    // 一時要素を削除
+    document.body.removeChild(element)
+
+    // Blobからダウンロードリンクを作成（モバイル対応）
+    const blobUrl = URL.createObjectURL(pdfBlob)
+    const downloadLink = document.createElement('a')
+    downloadLink.href = blobUrl
+    downloadLink.download = fileName
+    downloadLink.style.display = 'none'
+    document.body.appendChild(downloadLink)
+    downloadLink.click()
+    document.body.removeChild(downloadLink)
+
+    // メモリ解放
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 100)
+
+    closeSubmitModal()
+    alert('PDFファイルをダウンロードしました\n\n※ 選択データは保持されています。引き続き編集や他の方法での提出が可能です。')
+
+    // ダウンロード後に保存確認
+    if (confirm('このシフトを保存しますか？')) {
+      saveShiftData()
+    }
+  } catch (err) {
+    console.error('PDF生成に失敗:', err)
+    alert('PDF生成に失敗しました')
   }
 }
 
@@ -1042,10 +1253,6 @@ onMounted(() => {
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
   margin-bottom: 1.5rem;
-}
-
-.submit-methods .save-btn {
-  grid-column: 1 / -1;
 }
 
 .method-btn {
